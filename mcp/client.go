@@ -171,7 +171,7 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 	// Build all combinations: (API keys) x (models)
 	allKeys := []string{client.APIKey}
 	allKeys = append(allKeys, client.config.AlternativeAPIKeys...)
-	
+
 	allModels := []string{client.Model}
 	allModels = append(allModels, client.config.AlternativeModels...)
 
@@ -237,14 +237,6 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 	totalCombinations := len(allKeys) * len(allModels)
 	if totalCombinations > 1 {
 		return "", fmt.Errorf("all %d combinations (keys × models) failed, last error: %w", totalCombinations, lastErr)
-	}
-	return "", fmt.Errorf("still failed after %d retries: %w", client.config.MaxRetries, lastErr)
-}
-		}
-	}
-
-	if len(allKeys) > 1 {
-		return "", fmt.Errorf("all %d API keys failed, last error: %w", len(allKeys), lastErr)
 	}
 	return "", fmt.Errorf("still failed after %d retries: %w", client.config.MaxRetries, lastErr)
 }

@@ -18,17 +18,17 @@ import (
 
 // Bitget API endpoints (V2)
 const (
-	bitgetBaseURL         = "https://api.bitget.com"
-	bitgetAccountPath     = "/api/v2/mix/account/accounts"
-	bitgetPositionPath    = "/api/v2/mix/position/all-position"
-	bitgetOrderPath       = "/api/v2/mix/order/place-order"
-	bitgetLeveragePath    = "/api/v2/mix/account/set-leverage"
-	bitgetTickerPath      = "/api/v2/mix/market/ticker"
-	bitgetContractsPath   = "/api/v2/mix/market/contracts"
-	bitgetCancelOrderPath = "/api/v2/mix/order/cancel-order"
-	bitgetPendingPath     = "/api/v2/mix/order/orders-pending"
-	bitgetHistoryPath     = "/api/v2/mix/order/orders-history"
-	bitgetMarginModePath  = "/api/v2/mix/account/set-margin-mode"
+	bitgetBaseURL          = "https://api.bitget.com"
+	bitgetAccountPath      = "/api/v2/mix/account/accounts"
+	bitgetPositionPath     = "/api/v2/mix/position/all-position"
+	bitgetOrderPath        = "/api/v2/mix/order/place-order"
+	bitgetLeveragePath     = "/api/v2/mix/account/set-leverage"
+	bitgetTickerPath       = "/api/v2/mix/market/ticker"
+	bitgetContractsPath    = "/api/v2/mix/market/contracts"
+	bitgetCancelOrderPath  = "/api/v2/mix/order/cancel-order"
+	bitgetPendingPath      = "/api/v2/mix/order/orders-pending"
+	bitgetHistoryPath      = "/api/v2/mix/order/orders-history"
+	bitgetMarginModePath   = "/api/v2/mix/account/set-margin-mode"
 	bitgetPositionModePath = "/api/v2/mix/account/set-position-mode"
 )
 
@@ -56,28 +56,33 @@ type BitgetTrader struct {
 	contractsCacheTime  time.Time
 	contractsCacheMutex sync.RWMutex
 
+	// Available symbols cache
+	availableSymbols      map[string]bool
+	availableSymbolsTime  time.Time
+	availableSymbolsMutex sync.RWMutex
+
 	// Cache duration
 	cacheDuration time.Duration
 }
 
 // BitgetContract Bitget contract info
 type BitgetContract struct {
-	Symbol       string  // Symbol name
-	BaseCoin     string  // Base coin
-	QuoteCoin    string  // Quote coin
-	MinTradeNum  float64 // Minimum trade amount
-	MaxTradeNum  float64 // Maximum trade amount
+	Symbol         string  // Symbol name
+	BaseCoin       string  // Base coin
+	QuoteCoin      string  // Quote coin
+	MinTradeNum    float64 // Minimum trade amount
+	MaxTradeNum    float64 // Maximum trade amount
 	SizeMultiplier float64 // Contract size multiplier
-	PricePlace   int     // Price decimal places
-	VolumePlace  int     // Volume decimal places
+	PricePlace     int     // Price decimal places
+	VolumePlace    int     // Volume decimal places
 }
 
 // BitgetResponse Bitget API response
 type BitgetResponse struct {
-	Code    string          `json:"code"`
-	Msg     string          `json:"msg"`
-	Data    json.RawMessage `json:"data"`
-	RequestTime int64       `json:"requestTime"`
+	Code        string          `json:"code"`
+	Msg         string          `json:"msg"`
+	Data        json.RawMessage `json:"data"`
+	RequestTime int64           `json:"requestTime"`
 }
 
 // NewBitgetTrader creates a Bitget trader
@@ -99,6 +104,13 @@ func NewBitgetTrader(apiKey, secretKey, passphrase string) *BitgetTrader {
 	// Set one-way position mode (net mode)
 	if err := trader.setPositionMode(); err != nil {
 		logger.Infof("⚠️ Failed to set Bitget position mode: %v (ignore if already set)", err)
+	}
+
+	// Load available symbols on initialization
+	if symbols, err := trader.GetAvailableSymbols(); err != nil {
+		logger.Infof("⚠️ Failed to load available symbols: %v", err)
+	} else {
+		logger.Infof("✓ [Bitget] Loaded %d available symbols", len(symbols))
 	}
 
 	logger.Infof("🟢 [Bitget] Trader initialized")
@@ -237,11 +249,11 @@ func (t *BitgetTrader) GetBalance() (map[string]interface{}, error) {
 	}
 
 	var accounts []struct {
-		MarginCoin      string `json:"marginCoin"`
-		Available       string `json:"available"`       // Available balance
-		AccountEquity   string `json:"accountEquity"`   // Total equity
-		UsdtEquity      string `json:"usdtEquity"`      // USDT equity
-		UnrealizedPL    string `json:"unrealizedPL"`    // Unrealized P&L
+		MarginCoin    string `json:"marginCoin"`
+		Available     string `json:"available"`     // Available balance
+		AccountEquity string `json:"accountEquity"` // Total equity
+		UsdtEquity    string `json:"usdtEquity"`    // USDT equity
+		UnrealizedPL  string `json:"unrealizedPL"`  // Unrealized P&L
 	}
 
 	if err := json.Unmarshal(data, &accounts); err != nil {
@@ -429,41 +441,178 @@ func (t *BitgetTrader) getContract(symbol string) (*BitgetContract, error) {
 	return nil, fmt.Errorf("contract info not found: %s", symbol)
 }
 
+// GetAvailableSymbols fetches all available trading symbols from Bitget
+// Returns a map of symbol names for quick lookup
+func (t *BitgetTrader) GetAvailableSymbols() (map[string]bool, error) {
+	// Check cache first (valid for 1 hour)
+	t.availableSymbolsMutex.RLock()
+	if t.availableSymbols != nil && time.Since(t.availableSymbolsTime) < 1*time.Hour {
+		t.availableSymbolsMutex.RUnlock()
+		return t.availableSymbols, nil
+	}
+	t.availableSymbolsMutex.RUnlock()
+
+	params := map[string]interface{}{
+		"productType": "USDT-FUTURES",
+	}
+
+	data, err := t.doRequest("GET", bitgetContractsPath, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get available symbols: %w", err)
+	}
+
+	var contracts []struct {
+		Symbol string `json:"symbol"`
+		Status string `json:"status"` // online, offline
+	}
+
+	if err := json.Unmarshal(data, &contracts); err != nil {
+		return nil, fmt.Errorf("failed to parse symbols: %w", err)
+	}
+
+	symbols := make(map[string]bool)
+	for _, c := range contracts {
+		// Only include online symbols
+		if c.Status == "" || c.Status == "online" {
+			symbols[c.Symbol] = true
+		}
+	}
+
+	// Update cache
+	t.availableSymbolsMutex.Lock()
+	t.availableSymbols = symbols
+	t.availableSymbolsTime = time.Now()
+	t.availableSymbolsMutex.Unlock()
+
+	logger.Infof("✓ [Bitget] Loaded %d available trading symbols", len(symbols))
+	return symbols, nil
+}
+
+// IsSymbolValid checks if a symbol is valid and active on Bitget
+func (t *BitgetTrader) IsSymbolValid(symbol string) (bool, error) {
+	symbol = t.convertSymbol(symbol)
+
+	// First check in-memory cache of available symbols
+	t.availableSymbolsMutex.RLock()
+	if t.availableSymbols != nil && time.Since(t.availableSymbolsTime) < 1*time.Hour {
+		valid := t.availableSymbols[symbol]
+		t.availableSymbolsMutex.RUnlock()
+		return valid, nil
+	}
+	t.availableSymbolsMutex.RUnlock()
+
+	// If cache is stale, try to get contract info
+	_, err := t.getContract(symbol)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "40309") {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
+// GetMarginMode gets the current margin mode for a symbol
+// Returns: "crossed" for cross margin, "isolated" for isolated margin
+func (t *BitgetTrader) GetMarginMode(symbol string) (string, error) {
+	symbol = t.convertSymbol(symbol)
+
+	// Get account info which includes margin mode for each symbol
+	params := map[string]interface{}{
+		"productType": "USDT-FUTURES",
+		"symbol":      symbol,
+	}
+
+	data, err := t.doRequest("GET", "/api/v2/mix/account/account", params)
+	if err != nil {
+		return "", fmt.Errorf("failed to get margin mode: %w", err)
+	}
+
+	var accountInfo struct {
+		MarginMode string `json:"marginMode"` // crossed or isolated
+	}
+
+	if err := json.Unmarshal(data, &accountInfo); err != nil {
+		// If parsing fails, return default (crossed)
+		logger.Infof("⚠️ Failed to parse margin mode for %s, assuming crossed", symbol)
+		return "crossed", nil
+	}
+
+	if accountInfo.MarginMode == "" {
+		return "crossed", nil // Default to crossed if not specified
+	}
+
+	return accountInfo.MarginMode, nil
+}
+
 // SetMarginMode sets margin mode
 func (t *BitgetTrader) SetMarginMode(symbol string, isCrossMargin bool) error {
 	symbol = t.convertSymbol(symbol)
 
-	marginMode := "isolated"
+	// Check if symbol is valid first
+	valid, err := t.IsSymbolValid(symbol)
+	if err != nil {
+		return fmt.Errorf("failed to validate symbol: %w", err)
+	}
+	if !valid {
+		return fmt.Errorf("symbol %s has been removed or is invalid", symbol)
+	}
+
+	desiredMode := "isolated"
 	if isCrossMargin {
-		marginMode = "crossed"
+		desiredMode = "crossed"
+	}
+
+	// Check current margin mode first to avoid unnecessary API calls
+	currentMode, err := t.GetMarginMode(symbol)
+	if err != nil {
+		logger.Infof("  ⚠️ Failed to get current margin mode for %s: %v, will attempt to set", symbol, err)
+	} else if currentMode == desiredMode {
+		logger.Infof("  ✓ %s margin mode is already %s, no change needed", symbol, desiredMode)
+		return nil
+	} else {
+		logger.Infof("  🔄 %s margin mode: %s → %s", symbol, currentMode, desiredMode)
 	}
 
 	body := map[string]interface{}{
 		"symbol":      symbol,
 		"productType": "USDT-FUTURES",
 		"marginCoin":  "USDT",
-		"marginMode":  marginMode,
+		"marginMode":  desiredMode,
 	}
 
-	_, err := t.doRequest("POST", bitgetMarginModePath, body)
+	_, err = t.doRequest("POST", bitgetMarginModePath, body)
 	if err != nil {
 		if strings.Contains(err.Error(), "same") || strings.Contains(err.Error(), "already") {
 			return nil
 		}
 		if strings.Contains(err.Error(), "position") {
-			logger.Infof("  ⚠️ %s has positions, cannot change margin mode", symbol)
+			logger.Infof("  ⚠️ %s has positions, cannot change margin mode from %s to %s", symbol, currentMode, desiredMode)
 			return nil
+		}
+		if strings.Contains(err.Error(), "40309") {
+			return fmt.Errorf("symbol %s has been removed from Bitget", symbol)
 		}
 		return err
 	}
 
-	logger.Infof("  ✓ %s margin mode set to %s", symbol, marginMode)
+	logger.Infof("  ✓ %s margin mode set to %s successfully", symbol, desiredMode)
 	return nil
 }
 
 // SetLeverage sets leverage
 func (t *BitgetTrader) SetLeverage(symbol string, leverage int) error {
 	symbol = t.convertSymbol(symbol)
+
+	// Check if symbol is valid first
+	valid, err := t.IsSymbolValid(symbol)
+	if err != nil {
+		return fmt.Errorf("failed to validate symbol: %w", err)
+	}
+	if !valid {
+		return fmt.Errorf("symbol %s has been removed or is invalid", symbol)
+	}
 
 	body := map[string]interface{}{
 		"symbol":      symbol,
@@ -472,10 +621,13 @@ func (t *BitgetTrader) SetLeverage(symbol string, leverage int) error {
 		"leverage":    fmt.Sprintf("%d", leverage),
 	}
 
-	_, err := t.doRequest("POST", bitgetLeveragePath, body)
+	_, err = t.doRequest("POST", bitgetLeveragePath, body)
 	if err != nil {
 		if strings.Contains(err.Error(), "same") {
 			return nil
+		}
+		if strings.Contains(err.Error(), "40309") {
+			return fmt.Errorf("symbol %s has been removed from Bitget", symbol)
 		}
 		logger.Infof("  ⚠️ Failed to set %s leverage: %v", symbol, err)
 		return err
@@ -489,12 +641,22 @@ func (t *BitgetTrader) SetLeverage(symbol string, leverage int) error {
 func (t *BitgetTrader) OpenLong(symbol string, quantity float64, leverage int) (map[string]interface{}, error) {
 	symbol = t.convertSymbol(symbol)
 
+	// Check if symbol is valid first
+	valid, err := t.IsSymbolValid(symbol)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate symbol: %w", err)
+	}
+	if !valid {
+		return nil, fmt.Errorf("symbol %s has been removed or is invalid, cannot open position", symbol)
+	}
+
 	// Cancel old orders first
 	t.CancelAllOrders(symbol)
 
 	// Set leverage
 	if err := t.SetLeverage(symbol, leverage); err != nil {
 		logger.Infof("  ⚠️ Failed to set leverage: %v", err)
+		return nil, err
 	}
 
 	// Format quantity
@@ -543,12 +705,22 @@ func (t *BitgetTrader) OpenLong(symbol string, quantity float64, leverage int) (
 func (t *BitgetTrader) OpenShort(symbol string, quantity float64, leverage int) (map[string]interface{}, error) {
 	symbol = t.convertSymbol(symbol)
 
+	// Check if symbol is valid first
+	valid, err := t.IsSymbolValid(symbol)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate symbol: %w", err)
+	}
+	if !valid {
+		return nil, fmt.Errorf("symbol %s has been removed or is invalid, cannot open position", symbol)
+	}
+
 	// Cancel old orders first
 	t.CancelAllOrders(symbol)
 
 	// Set leverage
 	if err := t.SetLeverage(symbol, leverage); err != nil {
 		logger.Infof("  ⚠️ Failed to set leverage: %v", err)
+		return nil, err
 	}
 
 	// Format quantity
@@ -964,15 +1136,15 @@ func (t *BitgetTrader) GetOrderStatus(symbol string, orderID string) (map[string
 	}
 
 	var order struct {
-		OrderId      string `json:"orderId"`
-		State        string `json:"state"`        // filled, canceled, partially_filled, new
-		PriceAvg     string `json:"priceAvg"`     // Average fill price
-		BaseVolume   string `json:"baseVolume"`   // Filled quantity
-		Fee          string `json:"fee"`          // Fee
-		Side         string `json:"side"`
-		OrderType    string `json:"orderType"`
-		CTime        string `json:"cTime"`
-		UTime        string `json:"uTime"`
+		OrderId    string `json:"orderId"`
+		State      string `json:"state"`      // filled, canceled, partially_filled, new
+		PriceAvg   string `json:"priceAvg"`   // Average fill price
+		BaseVolume string `json:"baseVolume"` // Filled quantity
+		Fee        string `json:"fee"`        // Fee
+		Side       string `json:"side"`
+		OrderType  string `json:"orderType"`
+		CTime      string `json:"cTime"`
+		UTime      string `json:"uTime"`
 	}
 
 	if err := json.Unmarshal(data, &order); err != nil {
@@ -1034,16 +1206,16 @@ func (t *BitgetTrader) GetClosedPnL(startTime time.Time, limit int) ([]ClosedPnL
 
 	var resp struct {
 		List []struct {
-			Symbol       string `json:"symbol"`
-			HoldSide     string `json:"holdSide"`
-			OpenPriceAvg string `json:"openPriceAvg"`
-			ClosePriceAvg string `json:"closePriceAvg"`
-			CloseVol     string `json:"closeVol"`
+			Symbol          string `json:"symbol"`
+			HoldSide        string `json:"holdSide"`
+			OpenPriceAvg    string `json:"openPriceAvg"`
+			ClosePriceAvg   string `json:"closePriceAvg"`
+			CloseVol        string `json:"closeVol"`
 			AchievedProfits string `json:"achievedProfits"`
-			TotalFee     string `json:"totalFee"`
-			Leverage     string `json:"leverage"`
-			CTime        string `json:"cTime"`
-			UTime        string `json:"uTime"`
+			TotalFee        string `json:"totalFee"`
+			Leverage        string `json:"leverage"`
+			CTime           string `json:"cTime"`
+			UTime           string `json:"uTime"`
 		} `json:"list"`
 	}
 
@@ -1115,15 +1287,15 @@ func (t *BitgetTrader) GetOpenOrders(symbol string) ([]OpenOrder, error) {
 	if err == nil && data != nil {
 		var orders struct {
 			EntrustedList []struct {
-				OrderId      string `json:"orderId"`
-				Symbol       string `json:"symbol"`
-				Side         string `json:"side"`         // buy/sell
-				TradeSide    string `json:"tradeSide"`    // open/close
-				PosSide      string `json:"posSide"`      // long/short
-				OrderType    string `json:"orderType"`    // limit/market
-				Price        string `json:"price"`
-				Size         string `json:"size"`
-				State        string `json:"state"`
+				OrderId   string `json:"orderId"`
+				Symbol    string `json:"symbol"`
+				Side      string `json:"side"`      // buy/sell
+				TradeSide string `json:"tradeSide"` // open/close
+				PosSide   string `json:"posSide"`   // long/short
+				OrderType string `json:"orderType"` // limit/market
+				Price     string `json:"price"`
+				Size      string `json:"size"`
+				State     string `json:"state"`
 			} `json:"entrustedList"`
 		}
 		if err := json.Unmarshal(data, &orders); err == nil {
@@ -1163,14 +1335,14 @@ func (t *BitgetTrader) GetOpenOrders(symbol string) ([]OpenOrder, error) {
 	if err == nil && planData != nil {
 		var planOrders struct {
 			EntrustedList []struct {
-				OrderId       string `json:"orderId"`
-				Symbol        string `json:"symbol"`
-				Side          string `json:"side"`
-				PosSide       string `json:"posSide"`
-				PlanType      string `json:"planType"` // normal_plan/profit_plan/loss_plan
-				TriggerPrice  string `json:"triggerPrice"`
-				Size          string `json:"size"`
-				State         string `json:"state"`
+				OrderId      string `json:"orderId"`
+				Symbol       string `json:"symbol"`
+				Side         string `json:"side"`
+				PosSide      string `json:"posSide"`
+				PlanType     string `json:"planType"` // normal_plan/profit_plan/loss_plan
+				TriggerPrice string `json:"triggerPrice"`
+				Size         string `json:"size"`
+				State        string `json:"state"`
 			} `json:"entrustedList"`
 		}
 		if err := json.Unmarshal(planData, &planOrders); err == nil {
