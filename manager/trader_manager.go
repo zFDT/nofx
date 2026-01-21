@@ -9,6 +9,7 @@ import (
 	"nofx/store"
 	"nofx/trader"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -708,7 +709,7 @@ func (tm *TraderManager) addTraderFromStore(traderCfg *store.Trader, aiModelCfg 
 	switch aiModelCfg.Provider {
 	case "qwen":
 		traderConfig.QwenKey = string(aiModelCfg.APIKey)
-		
+
 		// Parse alternative model names from same config (comma-separated)
 		if aiModelCfg.AlternativeModels != "" {
 			altModels := strings.Split(aiModelCfg.AlternativeModels, ",")
@@ -718,7 +719,7 @@ func (tm *TraderManager) addTraderFromStore(traderCfg *store.Trader, aiModelCfg 
 			traderConfig.AlternativeQwenModels = altModels
 			logger.Infof("✓ Loaded %d alternative Qwen models for failover: %v", len(altModels), altModels)
 		}
-		
+
 		// Also load alternative API keys from other configs (if any)
 		altModels, err := st.AIModel().GetAlternativesByProvider(traderCfg.UserID, "qwen", aiModelCfg.ID)
 		if err == nil && len(altModels) > 0 {
@@ -735,7 +736,7 @@ func (tm *TraderManager) addTraderFromStore(traderCfg *store.Trader, aiModelCfg 
 		}
 	case "deepseek":
 		traderConfig.DeepSeekKey = string(aiModelCfg.APIKey)
-		
+
 		// Parse alternative model names from same config
 		if aiModelCfg.AlternativeModels != "" {
 			altModels := strings.Split(aiModelCfg.AlternativeModels, ",")
@@ -745,7 +746,7 @@ func (tm *TraderManager) addTraderFromStore(traderCfg *store.Trader, aiModelCfg 
 			traderConfig.AlternativeDeepSeekModels = altModels
 			logger.Infof("✓ Loaded %d alternative DeepSeek models for failover: %v", len(altModels), altModels)
 		}
-		
+
 		// Also load alternative API keys from other configs
 		altModels, err := st.AIModel().GetAlternativesByProvider(traderCfg.UserID, "deepseek", aiModelCfg.ID)
 		if err == nil && len(altModels) > 0 {

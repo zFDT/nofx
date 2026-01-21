@@ -427,9 +427,9 @@ type SafeModelConfig struct {
 	Name              string `json:"name"`
 	Provider          string `json:"provider"`
 	Enabled           bool   `json:"enabled"`
-	CustomAPIURL      string `json:"customApiUrl"`       // Custom API URL (usually not sensitive)
-	CustomModelName   string `json:"customModelName"`    // Custom model name (not sensitive)
-	AlternativeModels string `json:"alternativeModels"`  // Comma-separated alternative models
+	CustomAPIURL      string `json:"customApiUrl"`      // Custom API URL (usually not sensitive)
+	CustomModelName   string `json:"customModelName"`   // Custom model name (not sensitive)
+	AlternativeModels string `json:"alternativeModels"` // Comma-separated alternative models
 }
 
 type ExchangeConfig struct {
@@ -459,11 +459,11 @@ type SafeExchangeConfig struct {
 
 type UpdateModelConfigRequest struct {
 	Models map[string]struct {
-		Enabled            bool   `json:"enabled"`
-		APIKey             string `json:"api_key"`
-		CustomAPIURL       string `json:"custom_api_url"`
-		CustomModelName    string `json:"custom_model_name"`
-		AlternativeModels  string `json:"alternative_models"` // Comma-separated model names
+		Enabled           bool   `json:"enabled"`
+		APIKey            string `json:"api_key"`
+		CustomAPIURL      string `json:"custom_api_url"`
+		CustomModelName   string `json:"custom_model_name"`
+		AlternativeModels string `json:"alternative_models"` // Comma-separated model names
 	} `json:"models"`
 }
 

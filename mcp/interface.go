@@ -8,8 +8,8 @@ import (
 // AIClient public AI client interface (for external use)
 type AIClient interface {
 	SetAPIKey(apiKey string, customURL string, customModel string)
-	SetAlternativeAPIKeys(keys []string)   // Set alternative API keys for auto-failover
-	SetAlternativeModels(models []string)  // Set alternative model names for same API key
+	SetAlternativeAPIKeys(keys []string)  // Set alternative API keys for auto-failover
+	SetAlternativeModels(models []string) // Set alternative model names for same API key
 	SetTimeout(timeout time.Duration)
 	CallWithMessages(systemPrompt, userPrompt string) (string, error)
 	CallWithRequest(req *Request) (string, error) // Builder pattern API (supports advanced features)

@@ -69,7 +69,7 @@ type AutoTraderConfig struct {
 	// Alternative API keys for auto-failover when quota exceeded
 	AlternativeDeepSeekKeys []string
 	AlternativeQwenKeys     []string
-	
+
 	// Alternative model names for same API key (e.g., qwen-max, qwen-plus, qwen-turbo)
 	AlternativeDeepSeekModels []string
 	AlternativeQwenModels     []string
