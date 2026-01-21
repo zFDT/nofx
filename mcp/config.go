@@ -21,6 +21,9 @@ type Config struct {
 	AlternativeAPIKeys []string
 	// Alternative model names for same API key (e.g., qwen-max -> qwen-plus -> qwen-turbo)
 	AlternativeModels []string
+	
+	// Model availability tracking (internal use only)
+	unavailableModels map[string]bool // key: model name, value: true if unavailable
 
 	// Behavior configuration
 	MaxTokens   int
@@ -50,6 +53,9 @@ func DefaultConfig() *Config {
 		RetryWaitBase:   2 * time.Second,
 		Timeout:         DefaultTimeout,
 		RetryableErrors: retryableErrors,
+		
+		// Initialize model availability tracking
+		unavailableModels: make(map[string]bool),
 
 		// Default dependencies (use global logger)
 		Logger:     logger.NewMCPLogger(),

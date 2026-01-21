@@ -177,6 +177,10 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 
 	var lastErr error
 	originalModel := client.Model
+	
+	// Track statistics
+	totalTried := 0
+	totalSkipped := 0
 
 	// Try each API key
 	for keyIdx, apiKey := range allKeys {
@@ -188,13 +192,24 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 
 		// Try each model for current key
 		for modelIdx, model := range allModels {
+			// Skip models marked as unavailable
+			if client.config.unavailableModels[model] {
+				client.logger.Debugf("⏭️  Skipping unavailable model: %s", model)
+				totalSkipped++
+				continue
+			}
+			
 			if modelIdx > 0 || keyIdx > 0 {
-				client.logger.Infof("🔄 Switching to model: %s", model)
+				client.logger.Infof("🔄 Switching to model: %s (tried: %d, skipped: %d)", model, totalTried, totalSkipped)
 				client.Model = model
 			}
+			
+			totalTried++
 
 			// Fixed retry flow for current key+model combination
 			maxRetries := client.config.MaxRetries
+			modelFailed := false
+			
 			for attempt := 1; attempt <= maxRetries; attempt++ {
 				if attempt > 1 {
 					client.logger.Warnf("⚠️  AI API call failed, retrying (%d/%d)...", attempt, maxRetries)
@@ -204,21 +219,32 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 				result, err := client.hooks.call(systemPrompt, userPrompt)
 				if err == nil {
 					if attempt > 1 || keyIdx > 0 || modelIdx > 0 {
-						client.logger.Infof("✓ AI API call succeeded with key %d model %s", keyIdx+1, model)
+						client.logger.Infof("✅ AI API call succeeded with key %d model %s", keyIdx+1, model)
 					}
 					return result, nil
 				}
 
 				lastErr = err
 
-				// Check if quota exceeded - try next model/key
+				// Check if quota exceeded or model not available
 				if client.hooks.isQuotaExceededError(err) {
-					client.logger.Warnf("⚠️  Quota exceeded for model %s", model)
+					client.logger.Warnf("⚠️  Quota exceeded for model %s, marking as unavailable", model)
+					client.config.unavailableModels[model] = true
+					modelFailed = true
+					break // Try next model
+				}
+				
+				// Check for model not found or invalid errors
+				if client.hooks.isModelNotAvailableError(err) {
+					client.logger.Warnf("⚠️  Model %s not available, marking as unavailable", model)
+					client.config.unavailableModels[model] = true
+					modelFailed = true
 					break // Try next model
 				}
 
 				// Check if error is retryable via hooks (supports custom retry strategy in subclass)
 				if !client.hooks.isRetryableError(err) {
+					client.logger.Warnf("❌ Non-retryable error for model %s: %v", model, err)
 					client.Model = originalModel // Restore original
 					return "", err
 				}
@@ -230,15 +256,30 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 					time.Sleep(waitTime)
 				}
 			}
+			
+			// If all retries failed for this model, mark as unavailable
+			if !modelFailed && lastErr != nil {
+				client.logger.Warnf("⚠️  Model %s failed after %d retries, marking as unavailable", model, maxRetries)
+				client.config.unavailableModels[model] = true
+			}
 		}
 	}
 
 	client.Model = originalModel // Restore original
-	totalCombinations := len(allKeys) * len(allModels)
-	if totalCombinations > 1 {
-		return "", fmt.Errorf("all %d combinations (keys × models) failed, last error: %w", totalCombinations, lastErr)
+	
+	// Calculate statistics
+	totalModels := len(allKeys) * len(allModels)
+	availableModels := totalModels - len(client.config.unavailableModels)
+	
+	client.logger.Errorf("❌ All available models exhausted. Total: %d, Tried: %d, Skipped: %d, Unavailable: %d", 
+		totalModels, totalTried, totalSkipped, len(client.config.unavailableModels))
+	
+	if totalTried == 0 {
+		return "", fmt.Errorf("no available models to try (all %d models marked as unavailable)", totalModels)
 	}
-	return "", fmt.Errorf("still failed after %d retries: %w", client.config.MaxRetries, lastErr)
+	
+	return "", fmt.Errorf("all %d tried combinations failed, %d models marked unavailable, last error: %w", 
+		totalTried, len(client.config.unavailableModels), lastErr)
 }
 
 func (client *Client) setAuthHeader(reqHeader http.Header) {
@@ -426,8 +467,31 @@ func (client *Client) isQuotaExceededError(err error) bool {
 		"rate limit",
 		"too many requests",
 		"429",
+		"allocationquota",
+		"freetieronly",
 	}
 	for _, keyword := range quotaKeywords {
+		if strings.Contains(errStr, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// isModelNotAvailableError determines if error is due to model not found or not available
+func (client *Client) isModelNotAvailableError(err error) bool {
+	errStr := strings.ToLower(err.Error())
+	modelErrorKeywords := []string{
+		"model not found",
+		"model does not exist",
+		"invalid model",
+		"model is not available",
+		"model not available",
+		"unsupported model",
+		"404",
+		"model_not_found",
+	}
+	for _, keyword := range modelErrorKeywords {
 		if strings.Contains(errStr, keyword) {
 			return true
 		}

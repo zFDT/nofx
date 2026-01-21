@@ -30,4 +30,5 @@ type clientHooks interface {
 	parseMCPResponse(body []byte) (string, error)
 	isRetryableError(err error) bool
 	isQuotaExceededError(err error) bool
+	isModelNotAvailableError(err error) bool
 }
