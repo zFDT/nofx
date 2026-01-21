@@ -596,7 +596,8 @@ export function AITradersPage({ onTraderSelect }: AITradersPageProps) {
     modelId: string,
     apiKey: string,
     customApiUrl?: string,
-    customModelName?: string
+    customModelName?: string,
+    alternativeModels?: string
   ) => {
     try {
       // 创建或更新用户的模型配置
@@ -621,6 +622,7 @@ export function AITradersPage({ onTraderSelect }: AITradersPageProps) {
                 apiKey,
                 customApiUrl: customApiUrl || '',
                 customModelName: customModelName || '',
+                alternativeModels: alternativeModels || '',
                 enabled: true,
               }
               : m
@@ -632,6 +634,7 @@ export function AITradersPage({ onTraderSelect }: AITradersPageProps) {
           apiKey,
           customApiUrl: customApiUrl || '',
           customModelName: customModelName || '',
+          alternativeModels: alternativeModels || '',
           enabled: true,
         }
         updatedModels = [...(allModels || []), newModel]
@@ -646,6 +649,7 @@ export function AITradersPage({ onTraderSelect }: AITradersPageProps) {
               api_key: model.apiKey || '',
               custom_api_url: model.customApiUrl || '',
               custom_model_name: model.customModelName || '',
+              alternative_models: model.alternativeModels || '',
             },
           ])
         ),
@@ -1401,7 +1405,8 @@ function ModelConfigModal({
     modelId: string,
     apiKey: string,
     baseUrl?: string,
-    modelName?: string
+    modelName?: string,
+    alternativeModels?: string
   ) => void
   onDelete: (modelId: string) => void
   onClose: () => void
@@ -1411,6 +1416,10 @@ function ModelConfigModal({
   const [apiKey, setApiKey] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [modelName, setModelName] = useState('')
+  const [alternativeModels, setAlternativeModels] = useState('')
+  const [selectedTemplate, setSelectedTemplate] = useState('')
+  const [showBatchImport, setShowBatchImport] = useState(false)
+  const [batchImportText, setBatchImportText] = useState('')
 
   // 获取当前编辑的模型信息 - 编辑时从已配置的模型中查找，新建时从所有支持的模型中查找
   const selectedModel = editingModelId
@@ -1423,8 +1432,61 @@ function ModelConfigModal({
       setApiKey(selectedModel.apiKey || '')
       setBaseUrl(selectedModel.customApiUrl || '')
       setModelName(selectedModel.customModelName || '')
+      setAlternativeModels(selectedModel.alternativeModels || '')
     }
   }, [editingModelId, selectedModel])
+
+  // 快速配置模板
+  const modelTemplates = {
+    trading: {
+      name: '交易推荐',
+      primary: 'qwen-plus',
+      alternatives: 'qwen-turbo,qwen-flash,qwen-long'
+    },
+    performance: {
+      name: '高性能',
+      primary: 'qwen-max',
+      alternatives: 'qwen-plus,qwen-turbo'
+    },
+    economy: {
+      name: '经济模式',
+      primary: 'qwen-turbo',
+      alternatives: 'qwen-flash,qwen-long'
+    },
+    deepseek: {
+      name: 'DeepSeek推荐',
+      primary: 'deepseek-chat',
+      alternatives: 'deepseek-reasoner'
+    }
+  }
+
+  // 应用模板
+  const applyTemplate = (templateKey: string) => {
+    const template = modelTemplates[templateKey as keyof typeof modelTemplates]
+    if (template) {
+      setModelName(template.primary)
+      setAlternativeModels(template.alternatives)
+      setSelectedTemplate(templateKey)
+    }
+  }
+
+  // 批量导入处理
+  const handleBatchImport = () => {
+    try {
+      const lines = batchImportText.trim().split('\n')
+      const models = lines.map(line => line.trim()).filter(line => line.length > 0)
+      if (models.length > 0) {
+        setModelName(models[0])
+        if (models.length > 1) {
+          setAlternativeModels(models.slice(1).join(','))
+        }
+        setShowBatchImport(false)
+        toast.success(`已导入 ${models.length} 个模型`)
+      }
+    } catch (error) {
+      toast.error('导入失败，请检查格式')
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -1434,7 +1496,8 @@ function ModelConfigModal({
       selectedModelId,
       apiKey.trim(),
       baseUrl.trim() || undefined,
-      modelName.trim() || undefined
+      modelName.trim() || undefined,
+      alternativeModels.trim() || undefined
     )
   }
 
@@ -1442,7 +1505,75 @@ function ModelConfigModal({
   const availableModels = allModels || []
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <>
+      {/* 批量导入弹窗 */}
+      {showBatchImport && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4">
+          <div
+            className="bg-gray-800 rounded-lg w-full max-w-2xl"
+            style={{ background: '#1E2329' }}
+          >
+            <div className="flex items-center justify-between p-6 pb-4">
+              <h3 className="text-xl font-bold" style={{ color: '#EAECEF' }}>
+                📋 批量导入模型
+              </h3>
+              <button
+                onClick={() => setShowBatchImport(false)}
+                className="p-2 rounded hover:bg-gray-700 transition-colors"
+              >
+                <span style={{ color: '#848E9C', fontSize: '20px' }}>×</span>
+              </button>
+            </div>
+            <div className="px-6 pb-6">
+              <div className="mb-4">
+                <div className="text-sm mb-2" style={{ color: '#848E9C' }}>
+                  每行一个模型名称，第一行为主模型，其余为备用模型：
+                </div>
+                <div className="p-3 rounded text-xs font-mono" style={{ background: '#0B0E11', color: '#F0B90B' }}>
+                  qwen-plus<br />
+                  qwen-turbo<br />
+                  qwen-flash<br />
+                  qwen-long<br />
+                  qwen-max
+                </div>
+              </div>
+              <textarea
+                value={batchImportText}
+                onChange={(e) => setBatchImportText(e.target.value)}
+                placeholder="qwen-plus&#10;qwen-turbo&#10;qwen-flash"
+                rows={10}
+                className="w-full px-3 py-2 rounded font-mono text-sm mb-4"
+                style={{
+                  background: '#0B0E11',
+                  border: '1px solid #2B3139',
+                  color: '#EAECEF',
+                }}
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowBatchImport(false)}
+                  className="flex-1 px-4 py-2 rounded text-sm font-semibold"
+                  style={{ background: '#2B3139', color: '#848E9C' }}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBatchImport}
+                  className="flex-1 px-4 py-2 rounded text-sm font-semibold"
+                  style={{ background: '#F0B90B', color: '#000' }}
+                >
+                  导入
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 主配置弹窗 */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div
         className="bg-gray-800 rounded-lg w-full max-w-lg relative my-8"
         style={{
@@ -1638,6 +1769,112 @@ function ModelConfigModal({
                   </div>
                 </div>
 
+                {/* 快速配置模板 */}
+                {(selectedModel?.provider === 'qwen' || selectedModel?.provider === 'deepseek') && !editingModelId && (
+                  <div className="p-4 rounded" style={{ background: '#0B0E11', border: '1px solid #2B3139' }}>
+                    <div className="text-sm font-semibold mb-3" style={{ color: '#EAECEF' }}>
+                      ⚡ 快速配置模板
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedModel.provider === 'qwen' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => applyTemplate('trading')}
+                            className={`px-3 py-2 rounded text-sm transition-colors ${selectedTemplate === 'trading' ? 'font-semibold' : ''}`}
+                            style={{
+                              background: selectedTemplate === 'trading' ? 'rgba(240, 185, 11, 0.2)' : '#2B3139',
+                              border: selectedTemplate === 'trading' ? '1px solid #F0B90B' : '1px solid transparent',
+                              color: selectedTemplate === 'trading' ? '#F0B90B' : '#EAECEF'
+                            }}
+                          >
+                            💼 交易推荐
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTemplate('performance')}
+                            className={`px-3 py-2 rounded text-sm transition-colors ${selectedTemplate === 'performance' ? 'font-semibold' : ''}`}
+                            style={{
+                              background: selectedTemplate === 'performance' ? 'rgba(240, 185, 11, 0.2)' : '#2B3139',
+                              border: selectedTemplate === 'performance' ? '1px solid #F0B90B' : '1px solid transparent',
+                              color: selectedTemplate === 'performance' ? '#F0B90B' : '#EAECEF'
+                            }}
+                          >
+                            🚀 高性能
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTemplate('economy')}
+                            className={`px-3 py-2 rounded text-sm transition-colors ${selectedTemplate === 'economy' ? 'font-semibold' : ''}`}
+                            style={{
+                              background: selectedTemplate === 'economy' ? 'rgba(240, 185, 11, 0.2)' : '#2B3139',
+                              border: selectedTemplate === 'economy' ? '1px solid #F0B90B' : '1px solid transparent',
+                              color: selectedTemplate === 'economy' ? '#F0B90B' : '#EAECEF'
+                            }}
+                          >
+                            💰 经济模式
+                          </button>
+                        </>
+                      )}
+                      {selectedModel.provider === 'deepseek' && (
+                        <button
+                          type="button"
+                          onClick={() => applyTemplate('deepseek')}
+                          className={`px-3 py-2 rounded text-sm transition-colors ${selectedTemplate === 'deepseek' ? 'font-semibold' : ''}`}
+                          style={{
+                            background: selectedTemplate === 'deepseek' ? 'rgba(240, 185, 11, 0.2)' : '#2B3139',
+                            border: selectedTemplate === 'deepseek' ? '1px solid #F0B90B' : '1px solid transparent',
+                            color: selectedTemplate === 'deepseek' ? '#F0B90B' : '#EAECEF'
+                          }}
+                        >
+                          🤖 DeepSeek推荐
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowBatchImport(true)}
+                        className="px-3 py-2 rounded text-sm transition-colors"
+                        style={{
+                          background: '#2B3139',
+                          color: '#EAECEF'
+                        }}
+                      >
+                        📋 批量导入
+                      </button>
+                    </div>
+                    {selectedTemplate && (
+                      <div className="mt-2 text-xs" style={{ color: '#848E9C' }}>
+                        已应用: {modelTemplates[selectedTemplate as keyof typeof modelTemplates]?.name}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 备用模型列表 */}
+                <div>
+                  <label
+                    className="block text-sm font-semibold mb-2"
+                    style={{ color: '#EAECEF' }}
+                  >
+                    🔄 备用模型列表 (可选)
+                  </label>
+                  <textarea
+                    value={alternativeModels}
+                    onChange={(e) => setAlternativeModels(e.target.value)}
+                    placeholder="qwen-plus,qwen-turbo,qwen-flash"
+                    rows={3}
+                    className="w-full px-3 py-2 rounded font-mono text-sm"
+                    style={{
+                      background: '#0B0E11',
+                      border: '1px solid #2B3139',
+                      color: '#EAECEF',
+                    }}
+                  />
+                  <div className="text-xs mt-1" style={{ color: '#848E9C' }}>
+                    逗号分隔多个模型名称，配额用尽时自动切换
+                  </div>
+                </div>
+
                 <div
                   className="p-4 rounded"
                   style={{
@@ -1688,5 +1925,6 @@ function ModelConfigModal({
         </form>
       </div>
     </div>
+    </>
   )
 }
