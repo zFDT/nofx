@@ -77,7 +77,18 @@ func (s *TraderStore) initTables() error {
 func (s *TraderStore) Create(trader *Trader) error {
 	// Use Select("*") to force GORM to save all fields including zero values (false, 0, etc)
 	// Without this, GORM will skip fields with zero values and use database defaults instead
-	return s.db.Select("*").Create(trader).Error
+	// To be extra safe against driver/config differences, explicitly update is_cross_margin after insert
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Select("*").Create(trader).Error; err != nil {
+			return err
+		}
+
+		// Force persist zero-value bool (prevent DB default=true from overriding when false)
+		if err := tx.Model(trader).UpdateColumn("is_cross_margin", trader.IsCrossMargin).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 // List gets user's trader list
