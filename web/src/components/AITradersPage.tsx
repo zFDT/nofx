@@ -541,6 +541,9 @@ export function AITradersPage({ onTraderSelect }: AITradersPageProps) {
       // 重新获取用户配置以确保数据同步
       const refreshedItems = await config.refreshApi()
       config.setItems(refreshedItems)
+      
+      // 同时刷新 traders 列表，确保所有数据同步
+      await mutateTraders()
 
       config.closeModal()
     } catch (error) {
@@ -664,6 +667,9 @@ export function AITradersPage({ onTraderSelect }: AITradersPageProps) {
       // 重新获取用户配置以确保数据同步
       const refreshedModels = await api.getModelConfigs()
       setAllModels(refreshedModels)
+      
+      // 同时刷新 traders 列表，确保所有数据同步
+      await mutateTraders()
 
       setShowModelModal(false)
       setEditingModel(null)
@@ -697,6 +703,9 @@ export function AITradersPage({ onTraderSelect }: AITradersPageProps) {
       // 重新获取用户配置以确保数据同步
       const refreshedExchanges = await api.getExchangeConfigs()
       setAllExchanges(refreshedExchanges)
+      
+      // 同时刷新 traders 列表，确保所有数据同步
+      await mutateTraders()
 
       setShowExchangeModal(false)
       setEditingExchange(null)
@@ -787,6 +796,9 @@ export function AITradersPage({ onTraderSelect }: AITradersPageProps) {
       // 重新获取用户配置以确保数据同步
       const refreshedExchanges = await api.getExchangeConfigs()
       setAllExchanges(refreshedExchanges)
+      
+      // 同时刷新 traders 列表，确保所有数据同步
+      await mutateTraders()
 
       setShowExchangeModal(false)
       setEditingExchange(null)
