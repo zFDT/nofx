@@ -18,17 +18,17 @@ type AIModelStore struct {
 
 // AIModel AI model configuration
 type AIModel struct {
-	ID                 string                 `gorm:"primaryKey" json:"id"`
-	UserID             string                 `gorm:"column:user_id;not null;default:default;index" json:"user_id"`
-	Name               string                 `gorm:"not null" json:"name"`
-	Provider           string                 `gorm:"not null" json:"provider"`
-	Enabled            bool                   `gorm:"default:false" json:"enabled"`
-	APIKey             crypto.EncryptedString `gorm:"column:api_key;default:''" json:"apiKey"`
-	CustomAPIURL       string                 `gorm:"column:custom_api_url;default:''" json:"customApiUrl"`
-	CustomModelName    string                 `gorm:"column:custom_model_name;default:''" json:"customModelName"`
-	AlternativeModels  string                 `gorm:"column:alternative_models;default:''" json:"alternativeModels"` // Comma-separated model names
-	CreatedAt          time.Time              `json:"created_at"`
-	UpdatedAt          time.Time              `json:"updated_at"`
+	ID                string                 `gorm:"primaryKey" json:"id"`
+	UserID            string                 `gorm:"column:user_id;not null;default:default;index" json:"user_id"`
+	Name              string                 `gorm:"not null" json:"name"`
+	Provider          string                 `gorm:"not null" json:"provider"`
+	Enabled           bool                   `gorm:"default:false" json:"enabled"`
+	APIKey            crypto.EncryptedString `gorm:"column:api_key;default:''" json:"apiKey"`
+	CustomAPIURL      string                 `gorm:"column:custom_api_url;default:''" json:"customApiUrl"`
+	CustomModelName   string                 `gorm:"column:custom_model_name;default:''" json:"customModelName"`
+	AlternativeModels string                 `gorm:"column:alternative_models;default:''" json:"alternativeModels"` // Comma-separated model names
+	CreatedAt         time.Time              `json:"created_at"`
+	UpdatedAt         time.Time              `json:"updated_at"`
 }
 
 func (AIModel) TableName() string { return "ai_models" }
@@ -147,11 +147,11 @@ func (s *AIModelStore) Update(userID, id string, enabled bool, apiKey, customAPI
 	if err == nil {
 		// Update existing model
 		updates := map[string]interface{}{
-			"enabled":             enabled,
-			"custom_api_url":      customAPIURL,
-			"custom_model_name":   customModelName,
-			"alternative_models":  alternativeModels,
-			"updated_at":          time.Now().UTC(),
+			"enabled":            enabled,
+			"custom_api_url":     customAPIURL,
+			"custom_model_name":  customModelName,
+			"alternative_models": alternativeModels,
+			"updated_at":         time.Now().UTC(),
 		}
 		// If apiKey is not empty, update it (encryption handled by crypto.EncryptedString)
 		if apiKey != "" {
@@ -166,11 +166,11 @@ func (s *AIModelStore) Update(userID, id string, enabled bool, apiKey, customAPI
 	if err == nil {
 		logger.Warnf("⚠️ Using legacy provider matching to update model: %s -> %s", provider, existingModel.ID)
 		updates := map[string]interface{}{
-			"enabled":             enabled,
-			"custom_api_url":      customAPIURL,
-			"custom_model_name":   customModelName,
-			"alternative_models":  alternativeModels,
-			"updated_at":          time.Now().UTC(),
+			"enabled":            enabled,
+			"custom_api_url":     customAPIURL,
+			"custom_model_name":  customModelName,
+			"alternative_models": alternativeModels,
+			"updated_at":         time.Now().UTC(),
 		}
 		if apiKey != "" {
 			updates["api_key"] = crypto.EncryptedString(apiKey)
