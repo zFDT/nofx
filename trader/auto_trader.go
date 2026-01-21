@@ -69,6 +69,10 @@ type AutoTraderConfig struct {
 	// Alternative API keys for auto-failover when quota exceeded
 	AlternativeDeepSeekKeys []string
 	AlternativeQwenKeys     []string
+	
+	// Alternative model names for same API key (e.g., qwen-max, qwen-plus, qwen-turbo)
+	AlternativeDeepSeekModels []string
+	AlternativeQwenModels     []string
 
 	// Custom AI API configuration
 	CustomAPIURL    string
@@ -188,7 +192,11 @@ func NewAutoTrader(config AutoTraderConfig, st *store.Store, userID string) (*Au
 			apiKey = config.CustomAPIKey
 		}
 		mcpClient.SetAPIKey(apiKey, config.CustomAPIURL, config.CustomModelName)
-		// Set alternative API keys for auto-failover
+		// Set alternative model names for auto-failover (same API key)
+		if len(config.AlternativeQwenModels) > 0 {
+			mcpClient.SetAlternativeModels(config.AlternativeQwenModels)
+		}
+		// Set alternative API keys for auto-failover (different keys)
 		if len(config.AlternativeQwenKeys) > 0 {
 			mcpClient.SetAlternativeAPIKeys(config.AlternativeQwenKeys)
 		}
@@ -206,7 +214,11 @@ func NewAutoTrader(config AutoTraderConfig, st *store.Store, userID string) (*Au
 			apiKey = config.CustomAPIKey
 		}
 		mcpClient.SetAPIKey(apiKey, config.CustomAPIURL, config.CustomModelName)
-		// Set alternative API keys for auto-failover
+		// Set alternative model names for auto-failover (same API key)
+		if len(config.AlternativeDeepSeekModels) > 0 {
+			mcpClient.SetAlternativeModels(config.AlternativeDeepSeekModels)
+		}
+		// Set alternative API keys for auto-failover (different keys)
 		if len(config.AlternativeDeepSeekKeys) > 0 {
 			mcpClient.SetAlternativeAPIKeys(config.AlternativeDeepSeekKeys)
 		}

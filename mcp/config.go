@@ -19,6 +19,8 @@ type Config struct {
 
 	// Failover API keys for auto-switching when quota exceeded
 	AlternativeAPIKeys []string
+	// Alternative model names for same API key (e.g., qwen-max -> qwen-plus -> qwen-turbo)
+	AlternativeModels []string
 
 	// Behavior configuration
 	MaxTokens   int

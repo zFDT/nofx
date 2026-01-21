@@ -423,12 +423,13 @@ type ModelConfig struct {
 
 // SafeModelConfig Safe model configuration structure (does not contain sensitive information)
 type SafeModelConfig struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	Provider        string `json:"provider"`
-	Enabled         bool   `json:"enabled"`
-	CustomAPIURL    string `json:"customApiUrl"`    // Custom API URL (usually not sensitive)
-	CustomModelName string `json:"customModelName"` // Custom model name (not sensitive)
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	Provider          string `json:"provider"`
+	Enabled           bool   `json:"enabled"`
+	CustomAPIURL      string `json:"customApiUrl"`       // Custom API URL (usually not sensitive)
+	CustomModelName   string `json:"customModelName"`    // Custom model name (not sensitive)
+	AlternativeModels string `json:"alternativeModels"`  // Comma-separated alternative models
 }
 
 type ExchangeConfig struct {
@@ -458,10 +459,11 @@ type SafeExchangeConfig struct {
 
 type UpdateModelConfigRequest struct {
 	Models map[string]struct {
-		Enabled         bool   `json:"enabled"`
-		APIKey          string `json:"api_key"`
-		CustomAPIURL    string `json:"custom_api_url"`
-		CustomModelName string `json:"custom_model_name"`
+		Enabled            bool   `json:"enabled"`
+		APIKey             string `json:"api_key"`
+		CustomAPIURL       string `json:"custom_api_url"`
+		CustomModelName    string `json:"custom_model_name"`
+		AlternativeModels  string `json:"alternative_models"` // Comma-separated model names
 	} `json:"models"`
 }
 
@@ -1673,12 +1675,13 @@ func (s *Server) handleGetModelConfigs(c *gin.Context) {
 	safeModels := make([]SafeModelConfig, len(models))
 	for i, model := range models {
 		safeModels[i] = SafeModelConfig{
-			ID:              model.ID,
-			Name:            model.Name,
-			Provider:        model.Provider,
-			Enabled:         model.Enabled,
-			CustomAPIURL:    model.CustomAPIURL,
-			CustomModelName: model.CustomModelName,
+			ID:                model.ID,
+			Name:              model.Name,
+			Provider:          model.Provider,
+			Enabled:           model.Enabled,
+			CustomAPIURL:      model.CustomAPIURL,
+			CustomModelName:   model.CustomModelName,
+			AlternativeModels: model.AlternativeModels,
 		}
 	}
 
@@ -1754,7 +1757,7 @@ func (s *Server) handleUpdateModelConfigs(c *gin.Context) {
 			tradersToReload[t.ID] = true
 		}
 
-		err := s.store.AIModel().Update(userID, modelID, modelData.Enabled, modelData.APIKey, modelData.CustomAPIURL, modelData.CustomModelName)
+		err := s.store.AIModel().Update(userID, modelID, modelData.Enabled, modelData.APIKey, modelData.CustomAPIURL, modelData.CustomModelName, modelData.AlternativeModels)
 		if err != nil {
 			SafeInternalError(c, fmt.Sprintf("Update model %s", modelID), err)
 			return
