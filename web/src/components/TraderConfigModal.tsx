@@ -100,7 +100,7 @@ export function TraderConfigModal({
   }, [isOpen])
 
   useEffect(() => {
-    // Only initialize form data when modal opens, not on every prop change
+    // Only initialize form data once when modal opens
     if (!isOpen) {
       // Reset initialization flag when modal closes
       isInitializedRef.current = false
@@ -111,24 +111,26 @@ export function TraderConfigModal({
     if (isInitializedRef.current) return
     
     if (traderData) {
+      // Edit mode: load trader data
       setFormData({
         ...traderData,
         strategy_id: traderData.strategy_id || '',
       })
     } else if (!isEditMode) {
-      setFormData({
+      // Create mode: set only empty/default fields, preserve user selections
+      setFormData(prev => ({
         trader_name: '',
         ai_model: availableModels[0]?.id || '',
         exchange_id: availableExchanges[0]?.id || '',
         strategy_id: '',
-        is_cross_margin: true,
-        show_in_competition: true,
+        is_cross_margin: prev.is_cross_margin, // Preserve user selection
+        show_in_competition: prev.show_in_competition, // Preserve user selection  
         scan_interval_minutes: 3,
-      })
+      }))
     }
     
     isInitializedRef.current = true
-  }, [isOpen, traderData, isEditMode, availableModels, availableExchanges])
+  }, [isOpen, traderData, isEditMode]) // Remove availableModels and availableExchanges from dependencies
 
   if (!isOpen) return null
 

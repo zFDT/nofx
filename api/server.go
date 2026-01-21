@@ -527,6 +527,9 @@ func (s *Server) handleCreateTrader(c *gin.Context) {
 	isCrossMargin := true // Default to cross margin mode
 	if req.IsCrossMargin != nil {
 		isCrossMargin = *req.IsCrossMargin
+		logger.Infof("📊 [CreateTrader] Received is_cross_margin from request: %v (pointer: %v)", isCrossMargin, req.IsCrossMargin)
+	} else {
+		logger.Infof("📊 [CreateTrader] is_cross_margin not provided, using default: %v", isCrossMargin)
 	}
 
 	showInCompetition := true // Default to show in competition
@@ -684,6 +687,7 @@ func (s *Server) handleCreateTrader(c *gin.Context) {
 
 	// Create trader configuration (database entity)
 	logger.Infof("🔧 DEBUG: Starting to create trader config, ID=%s, Name=%s, AIModel=%s, Exchange=%s, StrategyID=%s", traderID, req.Name, req.AIModelID, req.ExchangeID, strategyID)
+	logger.Infof("📊 [CreateTrader] Final is_cross_margin value before save: %v (margin mode: %s)", isCrossMargin, map[bool]string{true: "Cross/全仓", false: "Isolated/逐仓"}[isCrossMargin])
 	traderRecord := &store.Trader{
 		ID:                   traderID,
 		UserID:               userID,
@@ -787,8 +791,10 @@ func (s *Server) handleUpdateTrader(c *gin.Context) {
 
 	// Set default values
 	isCrossMargin := existingTrader.IsCrossMargin // Keep original value
+	logger.Infof("📊 [UpdateTrader] Original is_cross_margin: %v (%s)", existingTrader.IsCrossMargin, map[bool]string{true: "Cross/全仓", false: "Isolated/逐仓"}[existingTrader.IsCrossMargin])
 	if req.IsCrossMargin != nil {
 		isCrossMargin = *req.IsCrossMargin
+		logger.Infof("📊 [UpdateTrader] Updated is_cross_margin: %v → %v (%s)", existingTrader.IsCrossMargin, isCrossMargin, map[bool]string{true: "Cross/全仓", false: "Isolated/逐仓"}[isCrossMargin])
 	}
 
 	showInCompetition := existingTrader.ShowInCompetition // Keep original value
