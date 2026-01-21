@@ -438,6 +438,18 @@ func (s *StrategyStore) GetDefault() (*Strategy, error) {
 	return &st, nil
 }
 
+// GetActiveOrDefault gets user's active strategy or system default strategy
+func (s *StrategyStore) GetActiveOrDefault(userID string) (*Strategy, error) {
+	// Try to get active strategy first
+	activeStrategy, err := s.GetActive(userID)
+	if err == nil && activeStrategy != nil {
+		return activeStrategy, nil
+	}
+	
+	// Fall back to default strategy
+	return s.GetDefault()
+}
+
 // SetActive set active strategy (will first deactivate other strategies)
 func (s *StrategyStore) SetActive(userID, strategyID string) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
