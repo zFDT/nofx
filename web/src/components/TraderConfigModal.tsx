@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { AIModel, Exchange, CreateTraderRequest, Strategy } from '../types'
 import { useLanguage } from '../contexts/LanguageContext'
 import { t } from '../i18n/translations'
@@ -70,6 +70,7 @@ export function TraderConfigModal({
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [isFetchingBalance, setIsFetchingBalance] = useState(false)
   const [balanceFetchError, setBalanceFetchError] = useState<string>('')
+  const isInitializedRef = useRef(false) // Track if form has been initialized
 
   // 获取用户的策略列表
   useEffect(() => {
@@ -99,6 +100,16 @@ export function TraderConfigModal({
   }, [isOpen])
 
   useEffect(() => {
+    // Only initialize form data when modal opens, not on every prop change
+    if (!isOpen) {
+      // Reset initialization flag when modal closes
+      isInitializedRef.current = false
+      return
+    }
+    
+    // Skip if already initialized (prevents resetting user's selections)
+    if (isInitializedRef.current) return
+    
     if (traderData) {
       setFormData({
         ...traderData,
@@ -115,7 +126,9 @@ export function TraderConfigModal({
         scan_interval_minutes: 3,
       })
     }
-  }, [traderData, isEditMode, availableModels, availableExchanges])
+    
+    isInitializedRef.current = true
+  }, [isOpen, traderData, isEditMode, availableModels, availableExchanges])
 
   if (!isOpen) return null
 
