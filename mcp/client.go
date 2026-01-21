@@ -489,6 +489,7 @@ func (client *Client) isModelNotAvailableError(err error) bool {
 		"unsupported model",
 		"404",
 		"model_not_found",
+		"invalidparameter.model", // Qwen: InvalidParameter.Model.NotFound
 	}
 	for _, keyword := range modelErrorKeywords {
 		if strings.Contains(errStr, keyword) {

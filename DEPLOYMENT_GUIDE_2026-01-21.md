@@ -41,7 +41,7 @@
 
 ## 📝 代码修改记录
 
-### 最近部署记录 (2026-01-21 22:11)
+### 最近部署记录 (2026-01-21 23:17)
 
 #### 部署方式
 - **方法**: Docker Compose
@@ -88,10 +88,19 @@ cd /home/testWeb/nofx
 docker compose down
 docker compose up -d --build
 
+# ⚠️ 如果容器不启动（状态为"Created"）：
+docker compose rm -f nofx
+docker compose up -d nofx
+sleep 10
+
 # 5. 验证部署
 docker ps
 docker logs nofx-trading --tail 50
 curl http://localhost:8080/api/health
+
+# 6. 验证模型故障转移功能
+docker logs nofx-trading 2>&1 | grep -E "(alternative|Loaded|models)" | tail -20
+# 预期看到: "✓ Loaded 26 alternative Qwen models for failover"
 ```
 
 #### 部署结果
@@ -99,8 +108,14 @@ curl http://localhost:8080/api/health
 - 后端服务: http://43.134.70.26:8080 (健康)
 - 前端服务: http://43.134.70.26:3000 (运行中)
 - 容器状态: 
-  - `nofx-trading`: Up, healthy
+  - `nofx-trading`: Up, healthy (10秒后)
   - `nofx-frontend`: Up
+- 智能模型故障转移: 已激活，26个备用模型已加载
+  - `qwen-turbo`, `qwen-flash`, `qwen-turbo-latest`, `qwen-plus-latest`, `qwen-max-latest`, `qwen-long-latest`
+  - `qwq-plus`, `qwen-coder-plus`, `qwen2.5-72b-instruct`, `qwen2.5-32b-instruct`, `qwen2.5-14b-instruct`
+  - `qwen2.5-7b-instruct`, `qwen-long`, `qwen-max-2025-01-25`, `qwen-turbo-2025-07-15`, `qwen-plus-2025-07-28`
+  - `qwen-plus-2025-01-25`, `deepseek-v3`, `deepseek-v3.2`, `deepseek-r1`, `deepseek-r1-0528`
+  - `qwen-math-plus`, `qwen-coder-turbo`, `qwq-32b`, `qwq-plus-latest`, `gui-plus`
 
 ---
 
@@ -229,7 +244,10 @@ docker compose up -d --build
 
 # 等待服务启动
 sleep 10
-```
+# ⚠️ 如果容器创建但不运行（状态为"Created"）：
+# docker compose rm -f nofx
+# docker compose up -d nofx
+# sleep 10```
 
 **步骤5: 验证部署**
 ```bash
@@ -977,13 +995,114 @@ tail -f nohup.out | grep -i "error\|fatal\|panic"
 
 # 进程监控
 watch -n 2 'ps aux | grep nofx | grep -v grep'
+
+# 模型故障转移监控
+docker logs nofx-trading --tail 100 | grep -E "Switching|Quota exceeded|unavailable"
 ```
 
 ---
 
-**部署文档版本**: 1.0  
+## 🔄 AI模型智能故障转移机制
+
+### 功能概述
+系统实现了智能的AI模型故障转移机制，当主模型出现配额超限或不可用时，自动切换到备用模型，确保服务持续运行。
+
+### 核心逻辑说明
+
+#### 2.1 前端配置（支持批量导入200+模型）
+- **位置**: AI配置页面 → 备用模型列表
+- **功能**: 
+  - 手动输入逗号分隔的模型列表
+  - 批量导入（每行一个模型名称）
+  - 快速模板（交易/性能/经济/DeepSeek优化）
+- **限制**: 理论上无数量限制，支持导入200+模型
+- **示例**: `qwen-turbo,qwen-flash,qwen-plus,deepseek-v3,deepseek-r1,...`
+
+#### 2.2 运行时故障转移逻辑
+**工作流程**:
+1. **启动时加载**: 系统从数据库读取配置的备用模型列表
+2. **按序尝试**: 按配置顺序依次尝试每个模型
+3. **跳过不可用**: 已标记为不可用的模型会被自动跳过
+4. **错误检测**: 识别两类错误触发标记：
+   - 配额超限错误（HTTP 403/429，`AllocationQuota.FreeTierOnly`, `quota exceeded`, `rate limit`）
+   - 模型不可用错误（HTTP 404/400，`InvalidParameter.Model.NotFound`, `model not found`）
+5. **自动标记**: 遇到上述错误时，将模型标记为不可用
+6. **寻找下一个**: 继续尝试列表中下一个未标记的模型
+7. **全部失败**: 所有模型都不可用时，返回错误提示
+
+**代码位置**: [mcp/client.go](mcp/client.go#L196-L240)
+
+**日志示例**:
+```log
+[INFO] ✓ Loaded 26 alternative Qwen models for failover
+[INFO] 🔄 Switching to model: qwen-flash (tried: 1, skipped: 0)
+[WARN] ⚠️  Quota exceeded for model qwen-turbo, marking as unavailable
+[DEBUG] ⏭️  Skipping unavailable model: qwen-turbo
+[ERROR] ❌ All available models exhausted. Total: 26, Tried: 5, Skipped: 3, Unavailable: 8
+```
+
+#### 2.3 配置更新重置机制
+**重要**: 每次创建新的交易机器人或更新AI配置时，不可用模型的标记**会被重置**。
+
+**原因**: 
+- 每次配置更新都会创建新的 `mcp.Client` 实例
+- 新实例的 `unavailableModels` map 会重新初始化为空
+- 这允许用户在充值额度后重新启用所有模型
+
+**代码位置**: 
+- 创建Client: [trader/auto_trader.go](trader/auto_trader.go#L189-L197)
+- 配置初始化: [mcp/config.go](mcp/config.go#L58)
+
+**操作流程**:
+1. 用户在控制台充值API额度
+2. 在前端编辑AI配置（无需修改模型列表）
+3. 保存配置触发交易机器人重启
+4. 新的Client实例创建，`unavailableModels` 重置为空
+5. 所有模型（包括之前标记的）重新变为可用状态
+
+### 配置示例
+
+#### 数据库配置（SQLite）
+```sql
+-- 查看当前配置
+SELECT id, provider, alternative_models 
+FROM ai_models 
+WHERE provider = 'qwen';
+
+-- 更新备用模型列表
+UPDATE ai_models 
+SET alternative_models = 'qwen-turbo,qwen-flash,qwen-plus,deepseek-v3'
+WHERE provider = 'qwen';
+```
+
+#### 前端UI配置
+1. 进入 AI配置 页面
+2. 选择 Qwen 模型配置
+3. 在"备用模型列表"框中输入或批量导入
+4. 点击"保存配置"
+
+### 监控与调试
+
+#### 查看已加载模型
+```bash
+docker logs nofx-trading 2>&1 | grep "Loaded.*alternative.*models"
+```
+
+#### 查看模型切换日志
+```bash
+docker logs nofx-trading 2>&1 | grep "Switching to model"
+```
+
+#### 查看不可用模型统计
+```bash
+docker logs nofx-trading 2>&1 | grep "Unavailable:"
+```
+
+---
+
+**部署文档版本**: 1.1  
 **创建日期**: 2026-01-21  
-**最后更新**: 2026-01-21  
+**最后更新**: 2026-01-21 23:30  
 **维护人员**: NOFX团队
 
 ---
