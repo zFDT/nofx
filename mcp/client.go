@@ -177,7 +177,7 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 
 	var lastErr error
 	originalModel := client.Model
-	
+
 	// Track statistics
 	totalTried := 0
 	totalSkipped := 0
@@ -198,18 +198,18 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 				totalSkipped++
 				continue
 			}
-			
+
 			if modelIdx > 0 || keyIdx > 0 {
 				client.logger.Infof("🔄 Switching to model: %s (tried: %d, skipped: %d)", model, totalTried, totalSkipped)
 				client.Model = model
 			}
-			
+
 			totalTried++
 
 			// Fixed retry flow for current key+model combination
 			maxRetries := client.config.MaxRetries
 			modelFailed := false
-			
+
 			for attempt := 1; attempt <= maxRetries; attempt++ {
 				if attempt > 1 {
 					client.logger.Warnf("⚠️  AI API call failed, retrying (%d/%d)...", attempt, maxRetries)
@@ -233,7 +233,7 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 					modelFailed = true
 					break // Try next model
 				}
-				
+
 				// Check for model not found or invalid errors
 				if client.hooks.isModelNotAvailableError(err) {
 					client.logger.Warnf("⚠️  Model %s not available, marking as unavailable", model)
@@ -256,7 +256,7 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 					time.Sleep(waitTime)
 				}
 			}
-			
+
 			// If all retries failed for this model, mark as unavailable
 			if !modelFailed && lastErr != nil {
 				client.logger.Warnf("⚠️  Model %s failed after %d retries, marking as unavailable", model, maxRetries)
@@ -266,19 +266,19 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 	}
 
 	client.Model = originalModel // Restore original
-	
+
 	// Calculate statistics
 	totalModels := len(allKeys) * len(allModels)
 	availableModels := totalModels - len(client.config.unavailableModels)
-	
-	client.logger.Errorf("❌ All available models exhausted. Total: %d, Tried: %d, Skipped: %d, Unavailable: %d", 
+
+	client.logger.Errorf("❌ All available models exhausted. Total: %d, Tried: %d, Skipped: %d, Unavailable: %d",
 		totalModels, totalTried, totalSkipped, len(client.config.unavailableModels))
-	
+
 	if totalTried == 0 {
 		return "", fmt.Errorf("no available models to try (all %d models marked as unavailable)", totalModels)
 	}
-	
-	return "", fmt.Errorf("all %d tried combinations failed, %d models marked unavailable, last error: %w", 
+
+	return "", fmt.Errorf("all %d tried combinations failed, %d models marked unavailable, last error: %w",
 		totalTried, len(client.config.unavailableModels), lastErr)
 }
 
