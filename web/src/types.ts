@@ -114,6 +114,7 @@ export interface AIModel {
   apiKey?: string
   customApiUrl?: string
   customModelName?: string
+  alternativeModels?: string
 }
 
 export interface Exchange {
