@@ -29,6 +29,8 @@ type AIModel struct {
 	AlternativeModels  string                 `gorm:"column:alternative_models;default:''" json:"alternativeModels"` // Comma-separated model names
 	CreatedAt          time.Time              `json:"created_at"`
 	UpdatedAt          time.Time              `json:"updated_at"`
+}
+
 func (AIModel) TableName() string { return "ai_models" }
 
 // NewAIModelStore creates a new AIModelStore
