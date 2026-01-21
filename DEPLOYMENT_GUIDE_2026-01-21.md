@@ -41,6 +41,85 @@
 
 ## 📝 代码修改记录
 
+### 最近部署记录 (2026-01-21 22:11)
+
+#### 部署方式
+- **方法**: Docker Compose
+- **服务器**: testWeb@43.134.70.26
+- **源码目录**: /home/testWeb/nofx-source  
+- **部署目录**: /home/testWeb/nofx
+
+#### 遇到的问题及解决方案
+
+1. **问题**: `deploy-server.sh` 文件找不到
+   - **原因**: 部署目录和源码目录分离
+   - **解决**: 从 `/home/testWeb/nofx-source` 执行脚本
+
+2. **问题**: Kill进程权限不足（`Operation not permitted`）
+   - **原因**: 进程以root用户运行
+   - **解决**: 使用 `sudo kill` 命令
+
+3. **问题**: Go编译失败（`go: not found`）
+   - **原因**: 服务器未安装Go环境
+   - **解决**: 改用Docker Compose部署
+
+4. **问题**: 代码语法错误（`store/ai_model.go:32`）
+   - **原因**: 结构体定义缺少闭合括号 `}`
+   - **解决**: 本地修复后提交推送，服务器拉取最新代码
+
+5. **问题**: Docker容器状态为"created"不运行
+   - **原因**: Docker Compose配置或环境问题
+   - **解决**: 使用 `docker compose rm -f` 删除后重新创建
+
+#### 最终部署命令
+```bash
+# 1. 连接服务器
+ssh testWeb@43.134.70.26
+
+# 2. 拉取最新代码
+cd /home/testWeb/nofx-source
+git pull origin dev
+
+# 3. 同步到部署目录
+sudo cp -r * /home/testWeb/nofx/
+
+# 4. Docker构建并启动
+cd /home/testWeb/nofx
+docker compose down
+docker compose up -d --build
+
+# 5. 验证部署
+docker ps
+docker logs nofx-trading --tail 50
+curl http://localhost:8080/api/health
+```
+
+#### 部署结果
+✅ **成功部署**
+- 后端服务: http://43.134.70.26:8080 (健康)
+- 前端服务: http://43.134.70.26:3000 (运行中)
+- 容器状态: 
+  - `nofx-trading`: Up, healthy
+  - `nofx-frontend`: Up
+
+---
+
+### 提交历史
+
+#### Commit: 9f8a22b5 (2026-01-21 22:02)
+- **类型**: Bug修复
+- **描述**: 修复ai_model.go语法错误 - 添加缺失的结构体闭合括号
+- **文件变更**:
+  - 修改: `store/ai_model.go` (+2行)
+
+#### Commit: 18de504e (2026-01-21)
+- **类型**: 文档添加
+- **描述**: 添加部署指南和调查文档
+- **文件变更**:
+  - 新增: `DEPLOYMENT_GUIDE_2026-01-21.md` (776行)
+  - 新增: `INVESTIGATION.md` (74行)
+  - 新增: PR合并相关文档
+
 ### 最近提交记录
 
 #### Commit: 74c8b89b (2026-01-21)
@@ -117,9 +196,96 @@ du -sh /home/testWeb/nofx
 
 ## 🚀 自动化部署流程 (推荐)
 
-### 方式1: 使用 deploy-server.sh 脚本
+### 方式1: 使用 Docker Compose (最推荐)
 
-这是最推荐的部署方式，脚本会自动完成所有步骤。
+**适用场景**: 服务器已配置Docker环境（推荐用于生产环境）
+
+#### 部署步骤
+
+**步骤1: 连接服务器并进入源码目录**
+```bash
+ssh testWeb@43.134.70.26
+cd /home/testWeb/nofx-source
+```
+
+**步骤2: 拉取最新代码**
+```bash
+git pull origin dev
+```
+
+**步骤3: 同步代码到部署目录**
+```bash
+sudo cp -r * /home/testWeb/nofx/
+cd /home/testWeb/nofx
+```
+
+**步骤4: 构建并启动服务**
+```bash
+# 停止旧容器（如果有）
+docker compose down
+
+# 重新构建并启动
+docker compose up -d --build
+
+# 等待服务启动
+sleep 10
+```
+
+**步骤5: 验证部署**
+```bash
+# 查看容器状态
+docker ps
+
+# 查看后端日志
+docker logs nofx-trading --tail 50
+
+# 测试API
+curl http://localhost:8080/api/health
+
+# 测试前端
+curl -I http://localhost:3000/
+```
+
+**预期输出**:
+```
+CONTAINER ID   IMAGE         COMMAND    STATUS                   PORTS
+8f774c6e4a77   nofx-nofx     "./nofx"   Up 2 minutes (healthy)   0.0.0.0:8080->8080/tcp
+cd5c64d93e5f   nofx-frontend "..."      Up 2 hours               0.0.0.0:3000->80/tcp
+
+# API健康检查
+{"status":"ok","time":null}
+```
+
+#### 常见问题处理
+
+**问题1: 容器创建但不运行（状态为 "created"）**
+```bash
+# 删除并重新创建容器
+cd /home/testWeb/nofx
+docker compose rm -f nofx
+docker compose up -d nofx
+```
+
+**问题2: 端口冲突**
+```bash
+# 查找占用端口的进程
+lsof -i :8080
+
+# 停止旧进程
+docker stop <container_id>
+```
+
+**问题3: 权限问题**
+```bash
+# data目录权限修复
+sudo chown -R testWeb:testWeb /home/testWeb/nofx/data
+```
+
+---
+
+### 方式2: 使用 deploy-server.sh 脚本
+
+**适用场景**: 服务器已安装Go环境，直接编译部署（适用于开发环境）
 
 #### 步骤1: SSH连接到服务器
 ```bash
@@ -562,6 +728,14 @@ go version
 
 **解决**:
 ```bash
+# 方法1: Docker环境
+# 查找占用端口的容器
+docker ps | grep 8080
+
+# 停止容器
+docker stop <container_name>
+
+# 方法2: 非Docker环境  
 # 查找占用端口的进程
 lsof -i :8080
 # 或
@@ -575,11 +749,52 @@ vi .env
 # 修改 PORT=8081
 ```
 
+### Q5: Go编译失败（服务器未安装Go）
+**问题**: `sh: 1: go: not found`
+
+**解决方案**: 使用Docker Compose部署
+```bash
+cd /home/testWeb/nofx
+docker compose up -d --build
+```
+
+### Q6: 代码语法错误导致编译失败
+**问题**: `syntax error: unexpected keyword func`
+
+**解决**:
+```bash
+# 1. 在本地修复语法错误
+# 2. 提交并推送到远程仓库
+git add .
+git commit -m "Fix: 修复语法错误"
+git push origin dev
+
+# 3. 在服务器上拉取最新代码
+cd /home/testWeb/nofx-source
+git pull origin dev
+
+# 4. 重新部署
+sudo cp -r * /home/testWeb/nofx/
+cd /home/testWeb/nofx
+docker compose up -d --build
+```
+
 ### Q5: 服务启动后立即停止
 **问题**: 服务启动后几秒钟就停止
 
 **解决**:
 ```bash
+# Docker环境
+# 1. 查看详细错误日志
+docker logs nofx-trading --tail 100
+
+# 2. 前台运行查看错误
+docker run --rm --env-file .env -v $(pwd)/data:/app/data nofx-nofx ./nofx
+
+# 3. 检查配置文件
+cat .env
+
+# 非Docker环境
 # 1. 查看详细错误日志
 tail -50 nohup.out
 
