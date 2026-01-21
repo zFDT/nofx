@@ -75,7 +75,9 @@ func (s *TraderStore) initTables() error {
 
 // Create creates trader
 func (s *TraderStore) Create(trader *Trader) error {
-	return s.db.Create(trader).Error
+	// Use Select("*") to force GORM to save all fields including zero values (false, 0, etc)
+	// Without this, GORM will skip fields with zero values and use database defaults instead
+	return s.db.Select("*").Create(trader).Error
 }
 
 // List gets user's trader list
@@ -110,11 +112,11 @@ func (s *TraderStore) Update(trader *Trader) error {
 		trader.ID, trader.Name, trader.AIModelID, trader.StrategyID)
 
 	updates := map[string]interface{}{
-		"name":           trader.Name,
-		"ai_model_id":    trader.AIModelID,
-		"exchange_id":    trader.ExchangeID,
-		"strategy_id":    trader.StrategyID,
-		"is_cross_margin": trader.IsCrossMargin,
+		"name":                trader.Name,
+		"ai_model_id":         trader.AIModelID,
+		"exchange_id":         trader.ExchangeID,
+		"strategy_id":         trader.StrategyID,
+		"is_cross_margin":     trader.IsCrossMargin,
 		"show_in_competition": trader.ShowInCompetition,
 	}
 
