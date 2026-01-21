@@ -66,6 +66,10 @@ type AutoTraderConfig struct {
 	DeepSeekKey string
 	QwenKey     string
 
+	// Alternative API keys for auto-failover when quota exceeded
+	AlternativeDeepSeekKeys []string
+	AlternativeQwenKeys     []string
+
 	// Custom AI API configuration
 	CustomAPIURL    string
 	CustomAPIKey    string
@@ -184,6 +188,10 @@ func NewAutoTrader(config AutoTraderConfig, st *store.Store, userID string) (*Au
 			apiKey = config.CustomAPIKey
 		}
 		mcpClient.SetAPIKey(apiKey, config.CustomAPIURL, config.CustomModelName)
+		// Set alternative API keys for auto-failover
+		if len(config.AlternativeQwenKeys) > 0 {
+			mcpClient.SetAlternativeAPIKeys(config.AlternativeQwenKeys)
+		}
 		logger.Infof("🤖 [%s] Using Alibaba Cloud Qwen AI", config.Name)
 
 	case "custom":
@@ -198,6 +206,10 @@ func NewAutoTrader(config AutoTraderConfig, st *store.Store, userID string) (*Au
 			apiKey = config.CustomAPIKey
 		}
 		mcpClient.SetAPIKey(apiKey, config.CustomAPIURL, config.CustomModelName)
+		// Set alternative API keys for auto-failover
+		if len(config.AlternativeDeepSeekKeys) > 0 {
+			mcpClient.SetAlternativeAPIKeys(config.AlternativeDeepSeekKeys)
+		}
 		logger.Infof("🤖 [%s] Using DeepSeek AI", config.Name)
 	}
 

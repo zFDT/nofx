@@ -709,8 +709,36 @@ func (tm *TraderManager) addTraderFromStore(traderCfg *store.Trader, aiModelCfg 
 	switch aiModelCfg.Provider {
 	case "qwen":
 		traderConfig.QwenKey = string(aiModelCfg.APIKey)
+		// Load alternative Qwen models for auto-failover
+		altModels, err := st.AIModel().GetAlternativesByProvider(traderCfg.UserID, "qwen", aiModelCfg.ID)
+		if err == nil && len(altModels) > 0 {
+			altKeys := make([]string, 0, len(altModels))
+			for _, alt := range altModels {
+				if alt.APIKey != "" {
+					altKeys = append(altKeys, string(alt.APIKey))
+				}
+			}
+			if len(altKeys) > 0 {
+				traderConfig.AlternativeQwenKeys = altKeys
+				logger.Infof("✓ Loaded %d alternative Qwen API keys for failover", len(altKeys))
+			}
+		}
 	case "deepseek":
 		traderConfig.DeepSeekKey = string(aiModelCfg.APIKey)
+		// Load alternative DeepSeek models for auto-failover
+		altModels, err := st.AIModel().GetAlternativesByProvider(traderCfg.UserID, "deepseek", aiModelCfg.ID)
+		if err == nil && len(altModels) > 0 {
+			altKeys := make([]string, 0, len(altModels))
+			for _, alt := range altModels {
+				if alt.APIKey != "" {
+					altKeys = append(altKeys, string(alt.APIKey))
+				}
+			}
+			if len(altKeys) > 0 {
+				traderConfig.AlternativeDeepSeekKeys = altKeys
+				logger.Infof("✓ Loaded %d alternative DeepSeek API keys for failover", len(altKeys))
+			}
+		}
 	default:
 		// For other providers (grok, openai, claude, gemini, kimi, etc.), use CustomAPIKey
 		traderConfig.CustomAPIKey = string(aiModelCfg.APIKey)

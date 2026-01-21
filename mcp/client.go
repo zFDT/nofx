@@ -145,45 +145,75 @@ func (client *Client) SetTimeout(timeout time.Duration) {
 	client.httpClient.Timeout = timeout
 }
 
+// SetAlternativeAPIKeys sets alternative API keys for auto-failover when quota exceeded
+func (client *Client) SetAlternativeAPIKeys(keys []string) {
+	client.config.AlternativeAPIKeys = keys
+	if len(keys) > 0 {
+		client.logger.Infof("🔧 [MCP] Set %d alternative API keys for failover", len(keys))
+	}
+}
+
 // CallWithMessages template method - fixed retry flow (cannot be overridden)
 func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string, error) {
 	if client.APIKey == "" {
 		return "", fmt.Errorf("AI API key not set, please call SetAPIKey first")
 	}
 
-	// Fixed retry flow
+	// Try primary API key first, then alternatives if quota exceeded
+	allKeys := []string{client.APIKey}
+	allKeys = append(allKeys, client.config.AlternativeAPIKeys...)
+
 	var lastErr error
-	maxRetries := client.config.MaxRetries
-
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		if attempt > 1 {
-			client.logger.Warnf("⚠️  AI API call failed, retrying (%d/%d)...", attempt, maxRetries)
+	
+	for keyIdx, apiKey := range allKeys {
+		if keyIdx > 0 {
+			// Switch to alternative key
+			client.logger.Infof("🔄 Switching to alternative API key %d/%d", keyIdx+1, len(allKeys))
+			client.APIKey = apiKey
 		}
 
-		// Call the fixed single-call flow
-		result, err := client.hooks.call(systemPrompt, userPrompt)
-		if err == nil {
+		// Fixed retry flow for current key
+		maxRetries := client.config.MaxRetries
+		for attempt := 1; attempt <= maxRetries; attempt++ {
 			if attempt > 1 {
-				client.logger.Infof("✓ AI API retry succeeded")
+				client.logger.Warnf("⚠️  AI API call failed, retrying (%d/%d)...", attempt, maxRetries)
 			}
-			return result, nil
-		}
 
-		lastErr = err
-		// Check if error is retryable via hooks (supports custom retry strategy in subclass)
-		if !client.hooks.isRetryableError(err) {
-			return "", err
-		}
+			// Call the fixed single-call flow
+			result, err := client.hooks.call(systemPrompt, userPrompt)
+			if err == nil {
+				if attempt > 1 || keyIdx > 0 {
+					client.logger.Infof("✓ AI API call succeeded")
+				}
+				return result, nil
+			}
 
-		// Wait before retry
-		if attempt < maxRetries {
-			waitTime := client.config.RetryWaitBase * time.Duration(attempt)
-			client.logger.Infof("⏳ Waiting %v before retry...", waitTime)
-			time.Sleep(waitTime)
+			lastErr = err
+			
+			// Check if quota exceeded - try next API key
+			if client.hooks.isQuotaExceededError(err) {
+				client.logger.Warnf("⚠️  Quota exceeded for current API key")
+				break // Try next key
+			}
+
+			// Check if error is retryable via hooks (supports custom retry strategy in subclass)
+			if !client.hooks.isRetryableError(err) {
+				return "", err
+			}
+
+			// Wait before retry
+			if attempt < maxRetries {
+				waitTime := client.config.RetryWaitBase * time.Duration(attempt)
+				client.logger.Infof("⏳ Waiting %v before retry...", waitTime)
+				time.Sleep(waitTime)
+			}
 		}
 	}
 
-	return "", fmt.Errorf("still failed after %d retries: %w", maxRetries, lastErr)
+	if len(allKeys) > 1 {
+		return "", fmt.Errorf("all %d API keys failed, last error: %w", len(allKeys), lastErr)
+	}
+	return "", fmt.Errorf("still failed after %d retries: %w", client.config.MaxRetries, lastErr)
 }
 
 func (client *Client) setAuthHeader(reqHeader http.Header) {
@@ -355,6 +385,25 @@ func (client *Client) isRetryableError(err error) bool {
 	// Network errors, timeouts, EOF, etc. can be retried
 	for _, retryable := range client.config.RetryableErrors {
 		if strings.Contains(errStr, retryable) {
+			return true
+		}
+	}
+	return false
+}
+
+// isQuotaExceededError determines if error is due to quota/rate limit exceeded
+func (client *Client) isQuotaExceededError(err error) bool {
+	errStr := strings.ToLower(err.Error())
+	quotaKeywords := []string{
+		"quota",
+		"exceeded",
+		"insufficient",
+		"rate limit",
+		"too many requests",
+		"429",
+	}
+	for _, keyword := range quotaKeywords {
+		if strings.Contains(errStr, keyword) {
 			return true
 		}
 	}

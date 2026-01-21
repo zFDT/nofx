@@ -17,6 +17,9 @@ type Config struct {
 	BaseURL  string
 	Model    string
 
+	// Failover API keys for auto-switching when quota exceeded
+	AlternativeAPIKeys []string
+
 	// Behavior configuration
 	MaxTokens   int
 	Temperature float64

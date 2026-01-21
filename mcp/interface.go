@@ -8,6 +8,7 @@ import (
 // AIClient public AI client interface (for external use)
 type AIClient interface {
 	SetAPIKey(apiKey string, customURL string, customModel string)
+	SetAlternativeAPIKeys(keys []string) // Set alternative API keys for auto-failover
 	SetTimeout(timeout time.Duration)
 	CallWithMessages(systemPrompt, userPrompt string) (string, error)
 	CallWithRequest(req *Request) (string, error) // Builder pattern API (supports advanced features)
@@ -27,4 +28,5 @@ type clientHooks interface {
 	marshalRequestBody(requestBody map[string]any) ([]byte, error)
 	parseMCPResponse(body []byte) (string, error)
 	isRetryableError(err error) bool
+	isQuotaExceededError(err error) bool
 }

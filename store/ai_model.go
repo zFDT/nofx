@@ -235,3 +235,27 @@ func (s *AIModelStore) Create(userID, id, name, provider string, enabled bool, a
 	// Use FirstOrCreate to ignore if already exists
 	return s.db.Where("id = ?", id).FirstOrCreate(model).Error
 }
+
+// GetAlternativesByProvider retrieves all enabled AI models with the same provider (for failover)
+// excludeID can be empty to get all models, or specify an ID to exclude
+func (s *AIModelStore) GetAlternativesByProvider(userID, provider, excludeID string) ([]*AIModel, error) {
+	if userID == "" {
+		userID = "default"
+	}
+	if provider == "" {
+		return nil, fmt.Errorf("provider cannot be empty")
+	}
+
+	query := s.db.Where("user_id = ? AND provider = ? AND enabled = ?", userID, provider, true)
+	if excludeID != "" {
+		query = query.Where("id != ?", excludeID)
+	}
+
+	var models []*AIModel
+	err := query.Order("updated_at DESC").Find(&models).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return models, nil
+}
