@@ -269,7 +269,6 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 
 	// Calculate statistics
 	totalModels := len(allKeys) * len(allModels)
-	availableModels := totalModels - len(client.config.unavailableModels)
 
 	client.logger.Errorf("❌ All available models exhausted. Total: %d, Tried: %d, Skipped: %d, Unavailable: %d",
 		totalModels, totalTried, totalSkipped, len(client.config.unavailableModels))
