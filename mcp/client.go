@@ -72,24 +72,6 @@ func New() AIClient {
 }
 
 // NewClient creates client (supports options pattern)
-//
-// Usage examples:
-//
-//	// Basic usage (backward compatible)
-//	client := mcp.NewClient()
-//
-//	// Custom logger
-//	client := mcp.NewClient(mcp.WithLogger(customLogger))
-//
-//	// Custom timeout
-//	client := mcp.NewClient(mcp.WithTimeout(60*time.Second))
-//
-//	// Combine multiple options
-//	client := mcp.NewClient(
-//	    mcp.WithDeepSeekConfig("sk-xxx"),
-//	    mcp.WithLogger(customLogger),
-//	    mcp.WithTimeout(60*time.Second),
-//	)
 func NewClient(opts ...ClientOption) AIClient {
 	// 1. Create default config
 	cfg := DefaultConfig()
@@ -209,11 +191,18 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 			// Fixed retry flow for current key+model combination
 			maxRetries := client.config.MaxRetries
 			modelFailed := false
+			// Track max_tokens fallback attempts (initial + two halvings => 3 tries total)
+			originalTokens := client.MaxTokens
+			localMaxTokens := originalTokens
+			halvingCount := 0 // number of halvings applied (max 2)
 
 			for attempt := 1; attempt <= maxRetries; attempt++ {
 				if attempt > 1 {
 					client.logger.Warnf("⚠️  AI API call failed, retrying (%d/%d)...", attempt, maxRetries)
 				}
+
+				// Apply local max tokens for this attempt
+				client.MaxTokens = localMaxTokens
 
 				// Call the fixed single-call flow
 				result, err := client.hooks.call(systemPrompt, userPrompt)
@@ -221,10 +210,37 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 					if attempt > 1 || keyIdx > 0 || modelIdx > 0 {
 						client.logger.Infof("✅ AI API call succeeded with key %d model %s", keyIdx+1, model)
 					}
+					// restore client.MaxTokens before return
+					client.MaxTokens = originalTokens
 					return result, nil
 				}
 
 				lastErr = err
+
+				// Special handling: max_tokens exceeds provider range -> try halving up to 2 times
+				if client.hooks.isMaxTokensRangeError(err) {
+					if halvingCount < 2 {
+						// halve tokens and retry
+						newTokens := localMaxTokens / 2
+						if newTokens < 1 {
+							newTokens = 1
+						}
+						client.logger.Warnf("⚠️  max_tokens %d exceeds provider limit, halving to %d (attempt %d)", localMaxTokens, newTokens, halvingCount+1)
+						localMaxTokens = newTokens
+						halvingCount++
+						// Wait before retry
+						if attempt < maxRetries {
+							waitTime := client.config.RetryWaitBase * time.Duration(attempt)
+							client.logger.Infof("⏳ Waiting %v before retry after halving...", waitTime)
+							time.Sleep(waitTime)
+						}
+						continue
+					}
+					// exceeded halving attempts for this model, mark as failed and rotate
+					client.logger.Warnf("⚠️  max_tokens still invalid after %d halvings for model %s, rotating model...", halvingCount, model)
+					modelFailed = true
+					break
+				}
 
 				// Check if quota exceeded or model not available
 				if client.hooks.isQuotaExceededError(err) {
@@ -245,7 +261,8 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 				// Check if error is retryable via hooks (supports custom retry strategy in subclass)
 				if !client.hooks.isRetryableError(err) {
 					client.logger.Warnf("❌ Non-retryable error for model %s: %v", model, err)
-					client.Model = originalModel // Restore original
+					client.MaxTokens = originalTokens // Restore original
+					client.Model = originalModel      // Restore original
 					return "", err
 				}
 
@@ -262,10 +279,16 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 				client.logger.Warnf("⚠️  Model %s failed after %d retries, marking as unavailable", model, maxRetries)
 				client.config.unavailableModels[model] = true
 			}
+			// Restore original tokens before next model
+			client.MaxTokens = originalTokens
 		}
 	}
 
 	client.Model = originalModel // Restore original
+	// Restore original tokens
+	// Note: originalTokens captured per-model, but restore to config default here
+	// (in case of early return above, restore happened in place)
+	// No-op if unchanged.
 
 	// Calculate statistics
 	totalModels := len(allKeys) * len(allModels)
@@ -283,6 +306,24 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 
 func (client *Client) setAuthHeader(reqHeader http.Header) {
 	reqHeader.Set("Authorization", fmt.Sprintf("Bearer %s", client.APIKey))
+}
+
+func (client *Client) getProviderMaxTokensLimit() int {
+	switch client.Provider {
+	case ProviderQwen:
+		return QwenMaxTokensLimit
+	default:
+		return 0
+	}
+}
+
+func (client *Client) clampMaxTokens(tokens int) int {
+	limit := client.getProviderMaxTokensLimit()
+	if limit > 0 && tokens > limit {
+		client.logger.Warnf("⚠️ [%s] max_tokens %d exceeds provider limit %d, capping to limit", client.String(), tokens, limit)
+		return limit
+	}
+	return tokens
 }
 
 func (client *Client) buildMCPRequestBody(systemPrompt, userPrompt string) map[string]any {
@@ -308,11 +349,13 @@ func (client *Client) buildMCPRequestBody(systemPrompt, userPrompt string) map[s
 		"messages":    messages,
 		"temperature": client.config.Temperature, // Use configured temperature
 	}
+
+	maxTokens := client.clampMaxTokens(client.MaxTokens)
 	// OpenAI newer models use max_completion_tokens instead of max_tokens
 	if client.Provider == ProviderOpenAI {
-		requestBody["max_completion_tokens"] = client.MaxTokens
+		requestBody["max_completion_tokens"] = maxTokens
 	} else {
-		requestBody["max_tokens"] = client.MaxTokens
+		requestBody["max_tokens"] = maxTokens
 	}
 	return requestBody
 }
@@ -499,6 +542,20 @@ func (client *Client) isModelNotAvailableError(err error) bool {
 	return false
 }
 
+// isMaxTokensRangeError determines if error is due to max_tokens exceeding provider limits
+func (client *Client) isMaxTokensRangeError(err error) bool {
+	errStr := strings.ToLower(err.Error())
+	// Must mention token keys
+	if !(strings.Contains(errStr, "max_tokens") || strings.Contains(errStr, "max_completion_tokens")) {
+		return false
+	}
+	// And mention range/invalid parameter patterns
+	if strings.Contains(errStr, "range") || strings.Contains(errStr, "invalid_parameter") || strings.Contains(errStr, "invalidparameter") || strings.Contains(errStr, "should be [") {
+		return true
+	}
+	return false
+}
+
 // ============================================================
 // Builder Pattern API (Advanced Features)
 // ============================================================
@@ -532,6 +589,15 @@ func (client *Client) CallWithRequest(req *Request) (string, error) {
 	// Fixed retry flow
 	var lastErr error
 	maxRetries := client.config.MaxRetries
+	// Track max_tokens fallback attempts (initial + two halvings => 3 tries total)
+	originalTokens := 0
+	if req.MaxTokens != nil {
+		originalTokens = *req.MaxTokens
+	} else {
+		originalTokens = client.MaxTokens
+	}
+	localMaxTokens := originalTokens
+	halvingCount := 0 // number of halvings applied (max 2)
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		if attempt > 1 {
@@ -539,6 +605,10 @@ func (client *Client) CallWithRequest(req *Request) (string, error) {
 		}
 
 		// Call single request
+		// Apply local max tokens for this attempt into request
+		if localMaxTokens > 0 {
+			req.MaxTokens = &localMaxTokens
+		}
 		result, err := client.callWithRequest(req)
 		if err == nil {
 			if attempt > 1 {
@@ -548,6 +618,29 @@ func (client *Client) CallWithRequest(req *Request) (string, error) {
 		}
 
 		lastErr = err
+		// Special handling: max_tokens exceeds provider range -> try halving up to 2 times
+		if client.hooks.isMaxTokensRangeError(err) {
+			if halvingCount < 2 {
+				newTokens := localMaxTokens / 2
+				if newTokens < 1 {
+					newTokens = 1
+				}
+				client.logger.Warnf("⚠️  max_tokens %d exceeds provider limit (builder), halving to %d (attempt %d)", localMaxTokens, newTokens, halvingCount+1)
+				localMaxTokens = newTokens
+				halvingCount++
+				// Wait before retry
+				if attempt < maxRetries {
+					waitTime := client.config.RetryWaitBase * time.Duration(attempt)
+					client.logger.Infof("⏳ Waiting %v before retry after halving (builder)...", waitTime)
+					time.Sleep(waitTime)
+				}
+				continue
+			}
+			// exceeded halving attempts, return error to allow upper layers to rotate
+			client.logger.Warnf("⚠️  max_tokens still invalid after %d halvings in builder", halvingCount)
+			return "", err
+		}
+
 		// Check if error is retryable
 		if !client.hooks.isRetryableError(err) {
 			return "", err
@@ -646,12 +739,14 @@ func (client *Client) buildRequestBodyFromRequest(req *Request) map[string]any {
 	if client.Provider == ProviderOpenAI {
 		tokenKey = "max_completion_tokens"
 	}
+
+	maxTokens := client.MaxTokens
 	if req.MaxTokens != nil {
-		requestBody[tokenKey] = *req.MaxTokens
-	} else {
-		// If not set in Request, use Client's MaxTokens
-		requestBody[tokenKey] = client.MaxTokens
+		maxTokens = *req.MaxTokens
 	}
+	maxTokens = client.clampMaxTokens(maxTokens)
+	// If not set in Request, use Client's MaxTokens
+	requestBody[tokenKey] = maxTokens
 
 	if req.TopP != nil {
 		requestBody["top_p"] = *req.TopP

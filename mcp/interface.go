@@ -31,4 +31,5 @@ type clientHooks interface {
 	isRetryableError(err error) bool
 	isQuotaExceededError(err error) bool
 	isModelNotAvailableError(err error) bool
+	isMaxTokensRangeError(err error) bool
 }
