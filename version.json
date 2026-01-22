@@ -1,8 +1,8 @@
 ﻿{
-    "buildDate":  "2026-01-22T14:20:17Z",
-    "version":  "v1.0.7",
-    "commit":  "05f81709",
-    "description":  "Change default margin mode to isolated (逐仓) - set IsCrossMargin default to false",
+    "buildDate":  "2026-01-22T14:24:08Z",
+    "version":  "v1.0.8",
+    "commit":  "9ba9b09e",
+    "description":  "Fix isolated margin default - update API and database default values to false",
     "branch":  "dev",
     "features":  [
                      "Version API endpoint (/api/version)",

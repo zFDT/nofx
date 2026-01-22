@@ -542,12 +542,12 @@ func (s *Server) handleCreateTrader(c *gin.Context) {
 	traderID := fmt.Sprintf("%s_%s_%d", exchangeIDShort, req.AIModelID, time.Now().Unix())
 
 	// Set default values
-	isCrossMargin := true // Default to cross margin mode
+	isCrossMargin := false // Default to isolated margin mode (逐仓)
 	if req.IsCrossMargin != nil {
 		isCrossMargin = *req.IsCrossMargin
 		logger.Infof("📊 [CreateTrader] Received is_cross_margin from request: %v (pointer: %v)", isCrossMargin, req.IsCrossMargin)
 	} else {
-		logger.Infof("📊 [CreateTrader] is_cross_margin not provided, using default: %v", isCrossMargin)
+		logger.Infof("📊 [CreateTrader] is_cross_margin not provided, using default: %v (isolated)", isCrossMargin)
 	}
 
 	showInCompetition := true // Default to show in competition

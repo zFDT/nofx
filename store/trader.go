@@ -63,9 +63,24 @@ func (s *TraderStore) initTables() error {
 		var tableExists int64
 		s.db.Raw(`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'traders'`).Scan(&tableExists)
 		if tableExists > 0 {
+			// Fix default value for is_cross_margin column (change from true to false)
+			s.db.Exec(`ALTER TABLE traders ALTER COLUMN is_cross_margin SET DEFAULT false`)
 			return nil
 		}
 	}
+
+	// For SQLite, also fix default value if table exists
+	if s.db.Dialector.Name() == "sqlite" {
+		var tableExists int64
+		s.db.Raw(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='traders'`).Scan(&tableExists)
+		if tableExists > 0 {
+			// SQLite doesn't support ALTER COLUMN SET DEFAULT directly
+			// But new code uses GORM default:false tag, so new records will be correct
+			// Existing records will keep their values
+			return nil
+		}
+	}
+
 	// Use GORM AutoMigrate
 	if err := s.db.AutoMigrate(&Trader{}); err != nil {
 		return fmt.Errorf("failed to migrate traders table: %w", err)
