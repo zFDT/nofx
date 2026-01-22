@@ -308,3 +308,19 @@ func (m *MockClientHooks) buildRequest(url string, jsonData []byte) (*http.Reque
 func (m *MockClientHooks) call(systemPrompt, userPrompt string) (string, error) {
 	return "mocked call result", nil
 }
+
+func (m *MockClientHooks) isMaxTokensRangeError(err error) bool {
+	return false
+}
+
+func (m *MockClientHooks) isInputLengthError(err error) bool {
+	return false
+}
+
+func (m *MockClientHooks) isQuotaExceededError(err error) bool {
+	return false
+}
+
+func (m *MockClientHooks) isModelNotAvailableError(err error) bool {
+	return false
+}

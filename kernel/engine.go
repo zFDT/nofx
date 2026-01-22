@@ -292,6 +292,29 @@ func GetFullDecisionWithStrategy(ctx *Context, mcpClient mcp.AIClient, engine *S
 	// 3. Build User Prompt using strategy engine
 	userPrompt := engine.BuildUserPrompt(ctx)
 
+	// 3.5. Check and truncate if total prompt length exceeds API limits
+	const maxTotalLength = 5800 // Conservative limit for Qwen (6000 char input limit, leaving buffer)
+	totalLength := len(systemPrompt) + len(userPrompt)
+	if totalLength > maxTotalLength {
+		// Calculate how much we need to truncate from userPrompt
+		systemLen := len(systemPrompt)
+		maxUserLen := maxTotalLength - systemLen - 200 // Leave buffer
+
+		if maxUserLen > 500 && len(userPrompt) > maxUserLen {
+			// Truncate userPrompt intelligently
+			truncateMsg := fmt.Sprintf("\n\n[⚠️ Prompt truncated from %d to %d chars (total: %d→%d) due to API limits]\n",
+				len(userPrompt), maxUserLen, totalLength, systemLen+maxUserLen)
+
+			// Try to truncate at a section boundary
+			lastSectionIdx := strings.LastIndex(userPrompt[:maxUserLen-len(truncateMsg)-100], "\n### ")
+			if lastSectionIdx > maxUserLen/2 {
+				maxUserLen = lastSectionIdx
+			}
+
+			userPrompt = userPrompt[:maxUserLen] + truncateMsg + "\n---\n\nNow please analyze and output your decision (Chain of Thought + JSON)\n"
+		}
+	}
+
 	// 4. Call AI API
 	aiCallStart := time.Now()
 	aiResponse, err := mcpClient.CallWithMessages(systemPrompt, userPrompt)
@@ -1244,27 +1267,7 @@ func (e *StrategyEngine) BuildUserPrompt(ctx *Context) string {
 	sb.WriteString("---\n\n")
 	sb.WriteString("Now please analyze and output your decision (Chain of Thought + JSON)\n")
 
-	// Check and truncate prompt if too long for API limits
-	result := sb.String()
-	const maxInputLength = 5500 // Conservative limit (Qwen has 6000 char limit for input)
-
-	if len(result) > maxInputLength {
-		// Log warning about truncation
-		truncateMsg := fmt.Sprintf("\n\n[Warning: Prompt truncated from %d to %d characters due to API limits]\n", len(result), maxInputLength)
-
-		// Find a good truncation point (try to preserve structure)
-		truncateAt := maxInputLength - len(truncateMsg) - 200 // Leave room for closing message
-
-		// Try to truncate at a section boundary
-		lastSectionIdx := strings.LastIndex(result[:truncateAt], "\n### ")
-		if lastSectionIdx > truncateAt/2 {
-			truncateAt = lastSectionIdx
-		}
-
-		result = result[:truncateAt] + truncateMsg + "\n---\n\nNow please analyze and output your decision (Chain of Thought + JSON)\n"
-	}
-
-	return result
+	return sb.String()
 }
 
 func (e *StrategyEngine) formatPositionInfo(index int, pos PositionInfo, ctx *Context) string {

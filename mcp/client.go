@@ -545,13 +545,23 @@ func (client *Client) isModelNotAvailableError(err error) bool {
 // isMaxTokensRangeError determines if error is due to max_tokens exceeding provider limits
 func (client *Client) isMaxTokensRangeError(err error) bool {
 	errStr := strings.ToLower(err.Error())
-	// Must mention token keys
-	if !(strings.Contains(errStr, "max_tokens") || strings.Contains(errStr, "max_completion_tokens")) {
-		return false
+	// Check for max_tokens related errors
+	if strings.Contains(errStr, "max_tokens") || strings.Contains(errStr, "max_completion_tokens") {
+		if strings.Contains(errStr, "range") || strings.Contains(errStr, "invalid_parameter") || strings.Contains(errStr, "invalidparameter") || strings.Contains(errStr, "should be [") {
+			return true
+		}
 	}
-	// And mention range/invalid parameter patterns
-	if strings.Contains(errStr, "range") || strings.Contains(errStr, "invalid_parameter") || strings.Contains(errStr, "invalidparameter") || strings.Contains(errStr, "should be [") {
-		return true
+	return false
+}
+
+// isInputLengthError determines if error is due to input length exceeding provider limits (e.g., Qwen 6000 char limit)
+func (client *Client) isInputLengthError(err error) bool {
+	errStr := strings.ToLower(err.Error())
+	// Check for input length related errors
+	if strings.Contains(errStr, "input length") || strings.Contains(errStr, "input_length") {
+		if strings.Contains(errStr, "range") || strings.Contains(errStr, "should be") || strings.Contains(errStr, "exceed") {
+			return true
+		}
 	}
 	return false
 }
