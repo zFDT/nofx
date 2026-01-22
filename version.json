@@ -1,11 +1,13 @@
 ﻿{
-    "buildDate":  "2026-01-22T06:50:11Z",
-    "version":  "v1.0.3",
-    "commit":  "2afd3ff5",
-    "description":  "Add version display page",
+    "buildDate":  "2026-01-22T15:30:00Z",
+    "version":  "v1.0.4",
+    "commit":  "pending",
+    "description":  "Implement version API and display page",
     "branch":  "dev",
     "features":  [
-                     "Manual version configuration",
-                     "Version verification system"
+                     "Version API endpoint (/api/version)",
+                     "Version display page (/version)",
+                     "Real-time version information query",
+                     "Build info and Git commit tracking"
                  ]
 }
