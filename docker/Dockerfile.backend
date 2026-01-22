@@ -37,6 +37,10 @@ RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-${TA_LIB_VERSION}-src.
 # Backend Build Stage (Go Application)
 # ──────────────────────────────────────────────────────────────
 FROM golang:${GO_VERSION} AS backend-builder
+ARG VERSION=dev
+ARG COMMIT=""
+ARG BRANCH=""
+ARG BUILD_DATE=""
 
 RUN apk update && apk add --no-cache git make gcc g++ musl-dev
 
@@ -49,7 +53,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=1 GOOS=linux \
     CGO_CFLAGS="-D_LARGEFILE64_SOURCE" \
-    go build -trimpath -ldflags="-s -w" -o nofx .
+    go build -trimpath -ldflags="-s -w -X nofx/version.Version=${VERSION} -X nofx/version.Commit=${COMMIT} -X nofx/version.Branch=${BRANCH} -X nofx/version.BuildDate=${BUILD_DATE}" -o nofx .
 
 # ──────────────────────────────────────────────────────────────
 # Runtime Stage (Minimal Executable Environment)

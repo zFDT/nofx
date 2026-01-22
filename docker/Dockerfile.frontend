@@ -12,6 +12,12 @@ ARG NGINX_VERSION=alpine
 # Build Stage (Node)
 # ──────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION} AS builder
+ARG COMMIT=""
+ARG BRANCH=""
+ARG BUILD_DATE=""
+ENV COMMIT=${COMMIT}
+ENV BRANCH=${BRANCH}
+ENV BUILD_DATE=${BUILD_DATE}
 WORKDIR /build
 
 COPY web/package*.json ./

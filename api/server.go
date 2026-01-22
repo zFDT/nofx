@@ -20,6 +20,7 @@ import (
 	"nofx/provider/twelvedata"
 	"nofx/store"
 	"nofx/trader"
+	"nofx/version"
 	"strconv"
 	"strings"
 	"time"
@@ -100,6 +101,9 @@ func (s *Server) setupRoutes() {
 	{
 		// Health check
 		api.Any("/health", s.handleHealth)
+
+		// Version info
+		api.GET("/version", s.handleVersion)
 
 		// Admin login (used in admin mode, public)
 
@@ -220,6 +224,18 @@ func (s *Server) handleHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 		"time":   c.Request.Context().Value("time"),
+	})
+}
+
+// handleVersion returns backend build/version information
+func (s *Server) handleVersion(c *gin.Context) {
+	info := version.Get()
+	c.JSON(http.StatusOK, gin.H{
+		"version":   info.Version,
+		"commit":    info.Commit,
+		"branch":    info.Branch,
+		"buildDate": info.BuildDate,
+		"goVersion": info.GoVersion,
 	})
 }
 
@@ -3391,6 +3407,7 @@ func (s *Server) Start() error {
 	logger.Infof("🌐 API server starting at http://localhost%s", addr)
 	logger.Infof("📊 API Documentation:")
 	logger.Infof("  • GET  /api/health           - Health check")
+	logger.Infof("  • GET  /api/version          - Backend version info")
 	logger.Infof("  • GET  /api/traders          - Public AI trader leaderboard top 50 (no auth required)")
 	logger.Infof("  • GET  /api/competition      - Public competition data (no auth required)")
 	logger.Infof("  • GET  /api/top-traders      - Top 5 trader data (no auth required, for performance comparison)")

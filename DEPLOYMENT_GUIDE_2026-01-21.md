@@ -247,7 +247,32 @@ sleep 10
 # ⚠️ 如果容器创建但不运行（状态为"Created"）：
 # docker compose rm -f nofx
 # docker compose up -d nofx
-# sleep 10```
+# 等待服务启动
+sleep 10
+```
+
+### 版本号注入（构建时）
+
+为便于部署后进行版本追踪与定位，Docker Compose 已内置构建参数以在构建阶段注入版本信息：
+
+- 后端：通过 ldflags 注入到 `nofx/version` 包（Version/Commit/Branch/BuildDate）
+- 前端：构建时脚本生成 `public/version.json`
+- Compose 构建参数：`VERSION`、`COMMIT`、`BRANCH`、`BUILD_DATE`
+
+推荐在构建前导出如下环境变量，Compose 会将其传入 Dockerfile：
+
+```bash
+# 推荐：在构建前设置版本信息（示例）
+export VERSION="v1.0.0"
+export COMMIT=$(git rev-parse --short HEAD || echo "unknown")
+export BRANCH=$(git rev-parse --abbrev-ref HEAD || echo "unknown")
+export BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# 重新构建并启动（Compose 会将上述变量传递到 Dockerfile）
+docker compose up -d --build
+```
+
+说明：若未设置，上述变量将使用默认值（`VERSION=dev`，`COMMIT/BRANCH/BUILD_DATE=unknown`）。部署完成后可通过后文的版本号验证步骤进行校验。
 
 **步骤5: 验证部署**
 ```bash
@@ -262,6 +287,36 @@ curl http://localhost:8080/api/health
 
 # 测试前端
 curl -I http://localhost:3000/
+```
+
+#### 版本号验证（后端/前端）
+```bash
+# 后端版本信息（ldflags 注入）
+curl http://localhost:8080/api/version
+
+# 前端版本信息（构建脚本生成）
+curl http://localhost:3000/version.json
+```
+
+示例输出（后端）：
+```
+{
+   "version": "v1.0.0",
+   "commit": "abcd123",
+   "branch": "dev",
+   "buildDate": "2026-01-22T08:45:00Z",
+   "goVersion": "go1.25.3"
+}
+```
+
+示例输出（前端）：
+```
+{
+   "version": "1.0.0",
+   "commit": "abcd123",
+   "branch": "dev",
+   "buildDate": "2026-01-22T08:45:00Z"
+}
 ```
 
 **预期输出**:
@@ -478,6 +533,20 @@ go mod download
 
 # 编译主程序
 go build -o nofx main.go
+
+# 可选：注入版本信息（非 Docker 环境）
+export VERSION="v1.0.0"
+export COMMIT=$(git rev-parse --short HEAD || echo "unknown")
+export BRANCH=$(git rev-parse --abbrev-ref HEAD || echo "unknown")
+export BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+go build -o nofx -trimpath \
+   -ldflags "-s -w \
+   -X nofx/version.Version=${VERSION} \
+   -X nofx/version.Commit=${COMMIT} \
+   -X nofx/version.Branch=${BRANCH} \
+   -X nofx/version.BuildDate=${BUILD_DATE}" \
+   main.go
 
 # 设置执行权限
 chmod +x nofx
@@ -1100,9 +1169,9 @@ docker logs nofx-trading 2>&1 | grep "Unavailable:"
 
 ---
 
-**部署文档版本**: 1.1  
+**部署文档版本**: 1.2  
 **创建日期**: 2026-01-21  
-**最后更新**: 2026-01-21 23:30  
+**最后更新**: 2026-01-22  
 **维护人员**: NOFX团队
 
 ---

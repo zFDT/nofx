@@ -11,6 +11,7 @@ import (
 	"nofx/manager"
 	"nofx/mcp"
 	"nofx/store"
+	"nofx/version"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -30,6 +31,10 @@ func main() {
 	logger.Info("╔════════════════════════════════════════════════════════════╗")
 	logger.Info("║           🚀 NOFX - AI-Powered Trading System              ║")
 	logger.Info("╚════════════════════════════════════════════════════════════╝")
+
+	// Print version info
+	ver := version.Get()
+	logger.Infof("🔖 Version: %s | Commit: %s | Branch: %s | Build: %s | Go: %s", ver.Version, ver.Commit, ver.Branch, ver.BuildDate, ver.GoVersion)
 
 	// Initialize global configuration (loaded from .env)
 	config.Init()
