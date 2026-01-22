@@ -1,5 +1,5 @@
-# Version Update Script
-# Quick update for version.json file
+# 版本更新脚本 (中文版)
+# 用于快速更新 version.json 文件
 
 param(
     [Parameter(Mandatory=$false)]
@@ -22,25 +22,25 @@ $ErrorActionPreference = "Stop"
 $versionFile = "version.json"
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "           NOFX Version Update Tool                         " -ForegroundColor Cyan
+Write-Host "           NOFX 版本更新工具                                " -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Check if version.json exists
+# 检查 version.json 是否存在
 if (-not (Test-Path $versionFile)) {
-    Write-Host "Error: Cannot find $versionFile file" -ForegroundColor Red
+    Write-Host "错误: 找不到 $versionFile 文件" -ForegroundColor Red
     exit 1
 }
 
-# Read current version info
+# 读取当前版本信息
 $currentVersion = Get-Content $versionFile | ConvertFrom-Json
-Write-Host "Current version info:" -ForegroundColor Yellow
-Write-Host "   Version: $($currentVersion.version)" -ForegroundColor Gray
-Write-Host "   Description: $($currentVersion.description)" -ForegroundColor Gray
-Write-Host "   Date: $($currentVersion.buildDate)" -ForegroundColor Gray
+Write-Host "当前版本信息:" -ForegroundColor Yellow
+Write-Host "   版本: $($currentVersion.version)" -ForegroundColor Gray
+Write-Host "   描述: $($currentVersion.description)" -ForegroundColor Gray
+Write-Host "   日期: $($currentVersion.buildDate)" -ForegroundColor Gray
 Write-Host ""
 
-# Auto increment version if -Auto flag is set
+# 如果使用 -Auto 参数，自动递增版本号
 if ($Auto) {
     $versionParts = $currentVersion.version -replace '^v', '' -split '\.'
     if ($versionParts.Count -eq 3) {
@@ -48,12 +48,12 @@ if ($Auto) {
         $minor = [int]$versionParts[1]
         $patch = [int]$versionParts[2]
         
-        Write-Host "Select version increment type:" -ForegroundColor Cyan
-        Write-Host "   1. Patch (v$major.$minor.$($patch+1)) - Bug fixes"
-        Write-Host "   2. Minor (v$major.$($minor+1).0) - New features"
-        Write-Host "   3. Major (v$($major+1).0.0) - Major updates"
+        Write-Host "选择版本递增类型:" -ForegroundColor Cyan
+        Write-Host "   1. Patch (v$major.$minor.$($patch+1)) - 修复bug"
+        Write-Host "   2. Minor (v$major.$($minor+1).0) - 新功能"
+        Write-Host "   3. Major (v$($major+1).0.0) - 重大更新"
         
-        $choice = Read-Host "Please select (1-3, default: 1)"
+        $choice = Read-Host "请选择 (1-3, 默认: 1)"
         if ([string]::IsNullOrWhiteSpace($choice)) { $choice = "1" }
         
         switch ($choice) {
@@ -63,36 +63,36 @@ if ($Auto) {
             default { $Version = "v$major.$minor.$($patch+1)" }
         }
         
-        Write-Host "Auto version: $Version" -ForegroundColor Green
+        Write-Host "自动版本号: $Version" -ForegroundColor Green
     }
 }
 
-# Interactive input for version number
+# 交互式输入版本号
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $Version = Read-Host "Enter new version (e.g., v1.0.1, or leave blank to keep current)"
+    $Version = Read-Host "请输入新版本号 (例如: v1.0.1, 留空保持不变)"
     if ([string]::IsNullOrWhiteSpace($Version)) {
         $Version = $currentVersion.version
     }
 }
 
-# Ensure version starts with 'v'
+# 确保版本号以 v 开头
 if ($Version -notmatch '^v\d+\.\d+\.\d+$') {
     if ($Version -match '^\d+\.\d+\.\d+$') {
         $Version = "v$Version"
     } else {
-        Write-Host "Warning: Version format not standard, suggest using vX.Y.Z format" -ForegroundColor Yellow
+        Write-Host "警告: 版本号格式不标准，建议使用 vX.Y.Z 格式" -ForegroundColor Yellow
     }
 }
 
-# Interactive input for description
+# 交互式输入描述
 if ([string]::IsNullOrWhiteSpace($Description)) {
-    $Description = Read-Host "Enter version description (or leave blank to keep current)"
+    $Description = Read-Host "请输入版本描述 (留空保持不变)"
     if ([string]::IsNullOrWhiteSpace($Description)) {
         $Description = $currentVersion.description
     }
 }
 
-# Get Git information
+# 获取 Git 信息
 $gitCommit = ""
 $gitBranch = $Branch
 try {
@@ -102,10 +102,10 @@ try {
         $gitBranch = $Branch
     }
 } catch {
-    Write-Host "Warning: Cannot get Git info" -ForegroundColor Yellow
+    Write-Host "警告: 无法获取 Git 信息" -ForegroundColor Yellow
 }
 
-# Build new version info
+# 构建新的版本信息
 $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 
 $newVersion = @{
@@ -117,58 +117,58 @@ $newVersion = @{
     features = $currentVersion.features
 }
 
-# Display new version info
+# 显示新版本信息
 Write-Host ""
-Write-Host "New version info:" -ForegroundColor Cyan
-Write-Host "   Version: $Version" -ForegroundColor Green
-Write-Host "   Description: $Description" -ForegroundColor Green
-Write-Host "   Date: $buildDate" -ForegroundColor Green
-Write-Host "   Commit: $gitCommit" -ForegroundColor Green
-Write-Host "   Branch: $gitBranch" -ForegroundColor Green
+Write-Host "新版本信息:" -ForegroundColor Cyan
+Write-Host "   版本: $Version" -ForegroundColor Green
+Write-Host "   描述: $Description" -ForegroundColor Green
+Write-Host "   日期: $buildDate" -ForegroundColor Green
+Write-Host "   提交: $gitCommit" -ForegroundColor Green
+Write-Host "   分支: $gitBranch" -ForegroundColor Green
 Write-Host ""
 
-# Confirm update
-$confirm = Read-Host "Confirm version update? (Y/n)"
+# 确认更新
+$confirm = Read-Host "确认更新版本信息? (Y/n)"
 if ($confirm -eq "n" -or $confirm -eq "N") {
-    Write-Host "Update cancelled" -ForegroundColor Yellow
+    Write-Host "已取消更新" -ForegroundColor Yellow
     exit 0
 }
 
-# Write to file
+# 写入文件
 try {
     $newVersion | ConvertTo-Json -Depth 10 | Set-Content $versionFile -Encoding UTF8
-    Write-Host "Version info updated to $versionFile" -ForegroundColor Green
+    Write-Host "版本信息已更新到 $versionFile" -ForegroundColor Green
 } catch {
-    Write-Host "Error: Cannot write file - $_" -ForegroundColor Red
+    Write-Host "错误: 无法写入文件 - $_" -ForegroundColor Red
     exit 1
 }
 
-# Auto commit to Git if -Commit flag is set
+# 如果指定了 -Commit 参数，自动提交到 Git
 if ($Commit) {
     Write-Host ""
-    Write-Host "Committing to Git..." -ForegroundColor Cyan
+    Write-Host "提交到 Git..." -ForegroundColor Cyan
     
     try {
         git add $versionFile
         git commit -m "chore: bump version to $Version"
-        Write-Host "Committed to Git" -ForegroundColor Green
+        Write-Host "已提交到 Git" -ForegroundColor Green
         
-        $push = Read-Host "Push to remote? (y/N)"
+        $push = Read-Host "是否推送到远程仓库? (y/N)"
         if ($push -eq "y" -or $push -eq "Y") {
             git push
-            Write-Host "Pushed to remote" -ForegroundColor Green
+            Write-Host "已推送到远程仓库" -ForegroundColor Green
         }
     } catch {
-        Write-Host "Warning: Git operation failed - $_" -ForegroundColor Yellow
+        Write-Host "警告: Git 操作失败 - $_" -ForegroundColor Yellow
     }
 }
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "Done! Version updated to $Version" -ForegroundColor Green
+Write-Host "完成! 版本已更新为 $Version" -ForegroundColor Green
 Write-Host ""
-Write-Host "Tips:" -ForegroundColor Cyan
-Write-Host "   - Build: go build" -ForegroundColor Gray
-Write-Host "   - Verify: curl http://localhost:8080/api/version" -ForegroundColor Gray
-Write-Host "   - Check log: Version info will be shown at startup" -ForegroundColor Gray
+Write-Host "提示:" -ForegroundColor Cyan
+Write-Host "   - 构建项目: go build" -ForegroundColor Gray
+Write-Host "   - 验证版本: curl http://localhost:8080/api/version" -ForegroundColor Gray
+Write-Host "   - 查看日志: 启动后会显示版本信息" -ForegroundColor Gray
 Write-Host "============================================================" -ForegroundColor Cyan

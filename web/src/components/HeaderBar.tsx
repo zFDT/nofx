@@ -16,6 +16,7 @@ type Page =
   | 'data'
   | 'debate'
   | 'faq'
+  | 'version'
   | 'login'
   | 'register'
 
@@ -108,6 +109,7 @@ export default function HeaderBar({
                 { page: 'debate', path: '/debate', label: t('debateNav', language), requiresAuth: true },
                 { page: 'backtest', path: '/backtest', label: 'Backtest', requiresAuth: true },
                 { page: 'faq', path: '/faq', label: t('faqNav', language), requiresAuth: false },
+                { page: 'version', path: '/version', label: t('versionNav', language), requiresAuth: false },
               ]
 
               const handleNavClick = (tab: typeof navTabs[0]) => {
@@ -338,6 +340,7 @@ export default function HeaderBar({
                     { page: 'debate', path: '/debate', label: t('debateNav', language), requiresAuth: true },
                     { page: 'backtest', path: '/backtest', label: 'Backtest', requiresAuth: true },
                     { page: 'faq', path: '/faq', label: t('faqNav', language), requiresAuth: false },
+                    { page: 'version', path: '/version', label: t('versionNav', language), requiresAuth: false },
                   ]
 
                   const handleMobileNavClick = (tab: typeof navTabs[0]) => {

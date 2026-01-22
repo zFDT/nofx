@@ -11,6 +11,7 @@ import { ResetPasswordPage } from './components/ResetPasswordPage'
 import { CompetitionPage } from './components/CompetitionPage'
 import { LandingPage } from './pages/LandingPage'
 import { FAQPage } from './pages/FAQPage'
+import { VersionPage } from './pages/VersionPage'
 import { StrategyStudioPage } from './pages/StrategyStudioPage'
 import { DebateArenaPage } from './pages/DebateArenaPage'
 import { StrategyMarketPage } from './pages/StrategyMarketPage'
@@ -45,6 +46,7 @@ type Page =
   | 'data'
   | 'debate'
   | 'faq'
+  | 'version'
   | 'login'
   | 'register'
 
@@ -72,6 +74,7 @@ function App() {
     if (path === '/strategy-market' || hash === 'strategy-market') return 'strategy-market'
     if (path === '/data' || hash === 'data') return 'data'
     if (path === '/debate' || hash === 'debate') return 'debate'
+    if (path === '/version' || hash === 'version') return 'version'
     if (path === '/dashboard' || hash === 'trader' || hash === 'details')
       return 'trader'
     return 'competition' // 默认为竞赛页面
@@ -98,6 +101,7 @@ function App() {
       'strategy': '/strategy',
       'debate': '/debate',
       'faq': '/faq',
+      'version': '/version',
       'login': '/login',
       'register': '/register',
     }
@@ -160,6 +164,8 @@ function App() {
         setCurrentPage('data')
       } else if (path === '/debate' || hash === 'debate') {
         setCurrentPage('debate')
+      } else if (path === '/version' || hash === 'version') {
+        setCurrentPage('version')
       } else if (
         path === '/dashboard' ||
         hash === 'trader' ||
@@ -373,6 +379,31 @@ function App() {
       </div>
     )
   }
+  if (route === '/version') {
+    return (
+      <div
+        className="min-h-screen"
+        style={{ background: '#0B0E11', color: '#EAECEF' }}
+      >
+        <HeaderBar
+          isLoggedIn={!!user}
+          currentPage="version"
+          language={language}
+          onLanguageChange={setLanguage}
+          user={user}
+          onLogout={logout}
+          onLoginRequired={handleLoginRequired}
+          onPageChange={navigateToPage}
+        />
+        <VersionPage />
+        <LoginRequiredOverlay
+          isOpen={loginOverlayOpen}
+          onClose={() => setLoginOverlayOpen(false)}
+          featureName={loginOverlayFeature}
+        />
+      </div>
+    )
+  }
   if (route === '/reset-password') {
     return <ResetPasswordPage />
   }
@@ -389,6 +420,7 @@ function App() {
         'strategy': '/strategy',
         'debate': '/debate',
         'faq': '/faq',
+        'version': '/version',
       }
       const path = pathMap[page]
       if (path) {
