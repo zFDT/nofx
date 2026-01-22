@@ -1,8 +1,8 @@
 ﻿{
-    "buildDate":  "2026-01-22T11:20:50Z",
-    "version":  "v1.0.6",
-    "commit":  "b9064056",
-    "description":  "Fix AI API input length limit - improve detection and truncation logic for Qwen 6000 char limit",
+    "buildDate":  "2026-01-22T14:20:17Z",
+    "version":  "v1.0.7",
+    "commit":  "05f81709",
+    "description":  "Change default margin mode to isolated (逐仓) - set IsCrossMargin default to false",
     "branch":  "dev",
     "features":  [
                      "Version API endpoint (/api/version)",

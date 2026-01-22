@@ -91,7 +91,7 @@ type AutoTraderConfig struct {
 	StopTradingTime time.Duration // Pause duration after risk control triggers
 
 	// Position mode
-	IsCrossMargin bool // true=cross margin mode, false=isolated margin mode
+	IsCrossMargin bool // true=cross margin mode, false=isolated margin mode (default: false - isolated)
 
 	// Competition visibility
 	ShowInCompetition bool // Whether to show in competition page
