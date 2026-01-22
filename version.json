@@ -1,8 +1,8 @@
 ﻿{
-    "buildDate":  "2026-01-22T14:29:11Z",
-    "version":  "v1.0.9",
-    "commit":  "e62a1801",
-    "description":  "Improve AI decision logging and position history query with better error messages",
+    "buildDate":  "2026-01-22T14:34:25Z",
+    "version":  "v1.0.10",
+    "commit":  "83109468",
+    "description":  "Fix DataPage external domain issue - use local competition page instead of nofxos.ai",
     "branch":  "dev",
     "features":  [
                      "Version API endpoint (/api/version)",

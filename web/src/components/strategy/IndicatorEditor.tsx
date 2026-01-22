@@ -239,19 +239,6 @@ export function IndicatorEditor({
                   {t('notConfigured')}
                 </span>
               )}
-              <a
-                href="https://nofxos.ai/api-docs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full transition-all hover:scale-[1.02]"
-                style={{
-                  background: 'rgba(139, 92, 246, 0.2)',
-                  color: '#a855f7',
-                }}
-              >
-                <ExternalLink className="w-3 h-3" />
-                {t('viewApiDocs')}
-              </a>
             </div>
           </div>
 
