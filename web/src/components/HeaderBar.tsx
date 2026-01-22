@@ -118,11 +118,13 @@ export default function HeaderBar({
                   onLoginRequired?.(tab.label)
                   return
                 }
-                // Navigate normally
+                // Navigate using onPageChange instead of navigate to sync with App.tsx state
                 if (onPageChange) {
                   onPageChange(tab.page)
+                } else {
+                  // Fallback to direct navigation if onPageChange is not provided
+                  navigate(tab.path)
                 }
-                navigate(tab.path)
               }
 
               return navTabs.map((tab) => (
@@ -349,10 +351,13 @@ export default function HeaderBar({
                       setMobileMenuOpen(false)
                       return
                     }
+                    // Navigate using onPageChange instead of navigate to sync with App.tsx state
                     if (onPageChange) {
                       onPageChange(tab.page)
+                    } else {
+                      // Fallback to direct navigation if onPageChange is not provided
+                      navigate(tab.path)
                     }
-                    navigate(tab.path)
                     setMobileMenuOpen(false)
                   }
 
