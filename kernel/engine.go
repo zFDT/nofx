@@ -1711,17 +1711,22 @@ func extractDecisions(response string) ([]Decision, error) {
 
 	jsonContent := strings.TrimSpace(reJSONArray.FindString(jsonPart))
 	if jsonContent == "" {
-		logger.Infof("⚠️  [SafeFallback] AI didn't output JSON decision, entering safe wait mode")
+		// AI没有输出标准JSON格式，这通常发生在AI只输出文字分析时
+		// 采用安全策略：进入等待模式，避免错误操作
+		logger.Infof("⚠️  [Safe Mode] AI output is not in JSON format, defaulting to WAIT action")
 
 		cotSummary := jsonPart
 		if len(cotSummary) > 240 {
 			cotSummary = cotSummary[:240] + "..."
 		}
 
+		// 只记录一次简短的摘要，不在reasoning中重复描述
+		logger.Infof("   AI analysis preview: %s", cotSummary)
+
 		fallbackDecision := Decision{
 			Symbol:    "ALL",
 			Action:    "wait",
-			Reasoning: fmt.Sprintf("Model didn't output structured JSON decision, entering safe wait; summary: %s", cotSummary),
+			Reasoning: "AI did not provide structured decision, maintaining current positions",
 		}
 
 		return []Decision{fallbackDecision}, nil

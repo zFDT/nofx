@@ -1,8 +1,8 @@
 ﻿{
-    "buildDate":  "2026-01-22T14:24:08Z",
-    "version":  "v1.0.8",
-    "commit":  "9ba9b09e",
-    "description":  "Fix isolated margin default - update API and database default values to false",
+    "buildDate":  "2026-01-22T14:29:11Z",
+    "version":  "v1.0.9",
+    "commit":  "e62a1801",
+    "description":  "Improve AI decision logging and position history query with better error messages",
     "branch":  "dev",
     "features":  [
                      "Version API endpoint (/api/version)",

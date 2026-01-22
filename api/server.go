@@ -2277,12 +2277,18 @@ func (s *Server) handlePositionHistory(c *gin.Context) {
 	// Get closed positions
 	positions, err := store.Position().GetClosedPositions(trader.GetID(), limit)
 	if err != nil {
+		logger.Infof("❌ [%s] Failed to query closed positions: %v", trader.GetName(), err)
 		SafeInternalError(c, "Get position history", err)
 		return
 	}
 
+	logger.Infof("📊 [%s] Position history query: found %d closed positions", trader.GetName(), len(positions))
+
 	// Get statistics
-	stats, _ := store.Position().GetFullStats(trader.GetID())
+	stats, statsErr := store.Position().GetFullStats(trader.GetID())
+	if statsErr != nil {
+		logger.Infof("⚠️  [%s] Failed to get position stats: %v", trader.GetName(), statsErr)
+	}
 
 	// Get symbol stats
 	symbolStats, _ := store.Position().GetSymbolStats(trader.GetID(), 10)
