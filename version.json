@@ -1,13 +1,13 @@
 ﻿{
-    "buildDate":  "2026-01-22T15:30:00Z",
-    "version":  "v1.0.4",
-    "commit":  "pending",
-    "description":  "Implement version API and display page",
-    "branch":  "dev",
-    "features":  [
-                     "Version API endpoint (/api/version)",
-                     "Version display page (/version)",
-                     "Real-time version information query",
-                     "Build info and Git commit tracking"
-                 ]
+    "buildDate": "2026-01-22T15:30:00Z",
+    "version": "v1.0.4",
+    "commit": "pending",
+    "description": "Implement version API and display page",
+    "branch": "dev",
+    "features": [
+        "Version API endpoint (/api/version)",
+        "Version display page (/version)",
+        "Real-time version information query",
+        "Build info and Git commit tracking"
+    ]
 }
