@@ -1,8 +1,8 @@
 ﻿{
-    "buildDate":  "2026-01-22T06:41:57Z",
-    "version":  "v1.0.1",
-    "commit":  "a9b1717a",
-    "description":  "Initial version with manual version management",
+    "buildDate":  "2026-01-22T06:50:11Z",
+    "version":  "v1.0.3",
+    "commit":  "2afd3ff5",
+    "description":  "Add version display page",
     "branch":  "dev",
     "features":  [
                      "Manual version configuration",
