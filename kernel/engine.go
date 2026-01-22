@@ -293,18 +293,36 @@ func GetFullDecisionWithStrategy(ctx *Context, mcpClient mcp.AIClient, engine *S
 	userPrompt := engine.BuildUserPrompt(ctx)
 
 	// 3.5. Check and truncate if total prompt length exceeds API limits
-	const maxTotalLength = 5800 // Conservative limit for Qwen (6000 char input limit, leaving buffer)
+	const maxTotalLength = 5500  // Conservative limit for Qwen (6000 char input limit, leaving buffer)
+	const maxSystemLength = 4000 // System prompt should not exceed this
+	const maxUserLength = 1300   // User prompt minimum after system prompt
+
 	totalLength := len(systemPrompt) + len(userPrompt)
 	logger.Infof("🔍 Prompt length check: system=%d, user=%d, total=%d (limit=%d)", len(systemPrompt), len(userPrompt), totalLength, maxTotalLength)
-	
+
+	// First, check if system prompt alone is too long
+	if len(systemPrompt) > maxSystemLength {
+		logger.Warnf("⚠️ System prompt too long (%d > %d), truncating...", len(systemPrompt), maxSystemLength)
+		// Truncate system prompt intelligently - keep the beginning (role, constraints) and truncate examples/details
+		truncPoint := maxSystemLength - 200
+		lastNewline := strings.LastIndex(systemPrompt[:truncPoint], "\n\n")
+		if lastNewline > truncPoint/2 {
+			truncPoint = lastNewline
+		}
+		systemPrompt = systemPrompt[:truncPoint] + "\n\n[⚠️ System prompt truncated for API limits]\n"
+		logger.Warnf("⚠️ System prompt truncated to %d chars", len(systemPrompt))
+	}
+
+	// Recalculate after system prompt truncation
+	totalLength = len(systemPrompt) + len(userPrompt)
 	if totalLength > maxTotalLength {
 		// Calculate how much we need to truncate from userPrompt
 		systemLen := len(systemPrompt)
 		maxUserLen := maxTotalLength - systemLen - 200 // Leave buffer
 
-		if maxUserLen > 500 && len(userPrompt) > maxUserLen {
+		if maxUserLen > maxUserLength && len(userPrompt) > maxUserLen {
 			// Truncate userPrompt intelligently
-			truncateMsg := fmt.Sprintf("\n\n[⚠️ Prompt truncated from %d to %d chars (total: %d→%d) due to API limits]\n",
+			truncateMsg := fmt.Sprintf("\n\n[⚠️ User prompt truncated from %d to %d chars (total: %d→%d) due to API limits]\n",
 				len(userPrompt), maxUserLen, totalLength, systemLen+maxUserLen)
 
 			// Try to truncate at a section boundary
@@ -314,9 +332,9 @@ func GetFullDecisionWithStrategy(ctx *Context, mcpClient mcp.AIClient, engine *S
 			}
 
 			userPrompt = userPrompt[:maxUserLen] + truncateMsg + "\n---\n\nNow please analyze and output your decision (Chain of Thought + JSON)\n"
-			logger.Warnf("⚠️ User prompt truncated from %d to %d chars (new total: %d)", len(userPrompt)+len(systemPrompt)-systemLen, len(userPrompt), len(systemPrompt)+len(userPrompt))
+			logger.Warnf("⚠️ User prompt truncated to %d chars (new total: %d)", len(userPrompt), len(systemPrompt)+len(userPrompt))
 		} else {
-			logger.Warnf("⚠️ Total length %d exceeds limit %d, but cannot truncate safely (maxUserLen=%d)", totalLength, maxTotalLength, maxUserLen)
+			logger.Warnf("⚠️ Total length %d exceeds limit %d, but cannot truncate safely (maxUserLen=%d, systemLen=%d)", totalLength, maxTotalLength, maxUserLen, systemLen)
 		}
 	}
 
