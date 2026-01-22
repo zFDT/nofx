@@ -231,11 +231,13 @@ func (s *Server) handleHealth(c *gin.Context) {
 func (s *Server) handleVersion(c *gin.Context) {
 	info := version.Get()
 	c.JSON(http.StatusOK, gin.H{
-		"version":   info.Version,
-		"commit":    info.Commit,
-		"branch":    info.Branch,
-		"buildDate": info.BuildDate,
-		"goVersion": info.GoVersion,
+		"version":     info.Version,
+		"commit":      info.Commit,
+		"branch":      info.Branch,
+		"buildDate":   info.BuildDate,
+		"goVersion":   info.GoVersion,
+		"description": info.Description,
+		"features":    info.Features,
 	})
 }
 

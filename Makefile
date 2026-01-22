@@ -58,6 +58,7 @@ build:
 	@echo "🔨 Building backend..."
 	go build -o nofx
 	@echo "✅ Backend built: ./nofx"
+	@echo "📋 Version info: $$(go run main.go -version 2>&1 | grep Version || echo 'Run ./nofx to see version')"
 
 # Build frontend
 build-frontend:
