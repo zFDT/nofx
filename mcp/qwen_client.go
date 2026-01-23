@@ -8,13 +8,11 @@ const (
 	ProviderQwen       = "qwen"
 	DefaultQwenBaseURL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 	DefaultQwenModel   = "qwen3-max"
-	// Token limits for different qwen models
-	// Legacy models (qwen-max-0403, etc.) have 2000 max_tokens limit
-	// qwen-long supports around 8000 tokens
-	// New generation models (qwen-plus-latest, qwen-turbo-latest, qwen-max-latest) support up to 32K output tokens
-	QwenLegacyMaxTokensLimit = 2000  // For old qwen-max-0403, etc.
-	QwenLongMaxTokensLimit   = 8000  // For qwen-long
-	QwenLatestMaxTokensLimit = 30000 // For qwen-plus-latest, qwen-turbo-latest, qwen-max-latest (32K capacity, use 30K for safety)
+	// Token limit strategy: Use optimistic defaults with auto-downgrade on API errors
+	// System will automatically halve max_tokens (up to 2 times) when API returns range errors
+	// This eliminates the need to hardcode limits for every model variant
+	QwenLegacyMaxTokensLimit = 2000 // For known legacy models (qwen-max-0403)
+	QwenDefaultMaxTokensLimit = 8000 // Optimistic default for modern qwen models, will auto-adjust if needed
 )
 
 type QwenClient struct {

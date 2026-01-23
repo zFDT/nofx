@@ -312,24 +312,14 @@ func (client *Client) getProviderMaxTokensLimit() int {
 	switch client.Provider {
 	case ProviderQwen:
 		modelLower := strings.ToLower(client.Model)
-		// New generation models with -latest suffix support 32K output tokens
-		if strings.Contains(modelLower, "-latest") {
-			return QwenLatestMaxTokensLimit
+		// Only restrict known legacy models with low limits
+		// For qwen-max-0403 and similar old versioned models
+		if strings.Contains(modelLower, "-0403") || strings.Contains(modelLower, "-0428") {
+			return QwenLegacyMaxTokensLimit
 		}
-		// qwen-long model supports 8K tokens
-		if strings.Contains(modelLower, "qwen-long") {
-			return QwenLongMaxTokensLimit
-		}
-		// New qwen3 series (qwen3-max, qwen3-plus, etc.) also support higher limits
-		if strings.Contains(modelLower, "qwen3") {
-			return QwenLatestMaxTokensLimit
-		}
-		// qwen-plus and qwen-max without version suffix - use latest limit
-		if modelLower == "qwen-plus" || modelLower == "qwen-max" || modelLower == "qwen-turbo" {
-			return QwenLatestMaxTokensLimit
-		}
-		// Legacy models (qwen-max-0403, etc.) have 2000 limit
-		return QwenLegacyMaxTokensLimit
+		// Use optimistic default for all other qwen models (including qwen3-coder-plus, qwen-plus-latest, etc.)
+		// If API returns range error, auto-halving mechanism will adjust it down
+		return QwenDefaultMaxTokensLimit
 	default:
 		return 0
 	}

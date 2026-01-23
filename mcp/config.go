@@ -47,9 +47,9 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		// Default values
-		// Set conservative default to 2000 for compatibility with legacy models
-		// Will be automatically adjusted by clampMaxTokens() based on specific model capabilities
-		// (e.g., qwen-plus-latest supports 32K, qwen-long supports 8K, legacy models limited to 2K)
+		// Use conservative default (2000) for broad compatibility
+		// Provider-specific limits (e.g., QwenDefaultMaxTokensLimit=8000) will be applied via clampMaxTokens()
+		// If API returns range error, auto-halving mechanism will adjust down (up to 2 times)
 		MaxTokens:       getEnvInt("AI_MAX_TOKENS", 2000),
 		Temperature:     MCPClientTemperature,
 		MaxRetries:      MaxRetryTimes,

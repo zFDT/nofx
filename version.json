@@ -1,14 +1,14 @@
 ﻿{
     "buildDate":  "2026-01-23T00:00:00Z",
-    "version":  "v1.0.12",
-    "commit":  "e5a1639f",
-    "description":  "Enhanced Qwen model support - intelligent token limit detection for all model generations",
+    "version":  "v1.0.13",
+    "commit":  "b5fb37af",
+    "description":  "Smart token limit strategy - optimistic defaults with automatic downgrade",
     "branch":  "dev",
     "features":  [
-                     "Support qwen-plus-latest, qwen-turbo-latest with 32K token limit",
-                     "Intelligent model detection based on naming patterns",
-                     "qwen3 series support (qwen3-max, qwen3-plus) with 30K limit",
-                     "Backward compatible with legacy models (qwen-max-0403 at 2K)",
-                     "Auto-adjustment of max_tokens based on model capabilities"
+                     "Optimistic default token limit (8000) for modern Qwen models",
+                     "Automatic halving on API range errors (up to 2 attempts)",
+                     "No need to hardcode limits for each model variant",
+                     "Supports qwen3-coder-plus (64K), qwen-plus-latest (32K) automatically",
+                     "Legacy model detection for qwen-max-0403 variants"
                  ]
 }
