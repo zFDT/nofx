@@ -311,6 +311,12 @@ func (client *Client) setAuthHeader(reqHeader http.Header) {
 func (client *Client) getProviderMaxTokensLimit() int {
 	switch client.Provider {
 	case ProviderQwen:
+		// qwen-long model supports higher token limits
+		if strings.Contains(strings.ToLower(client.Model), "qwen-long") {
+			return QwenLongMaxTokensLimit
+		}
+		// All other qwen models (qwen-max-0403, qwen-plus, qwen-turbo, qwen3-max, etc.)
+		// have 2000 max_tokens limit
 		return QwenMaxTokensLimit
 	default:
 		return 0

@@ -47,6 +47,8 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		// Default values
+		// Set conservative default to 2000 to avoid exceeding most model limits
+		// Will be automatically capped by clampMaxTokens() based on provider/model
 		MaxTokens:       getEnvInt("AI_MAX_TOKENS", 2000),
 		Temperature:     MCPClientTemperature,
 		MaxRetries:      MaxRetryTimes,

@@ -1,13 +1,13 @@
 ﻿{
-    "buildDate":  "2026-01-22T14:34:25Z",
-    "version":  "v1.0.10",
-    "commit":  "83109468",
-    "description":  "Fix DataPage external domain issue - use local competition page instead of nofxos.ai",
+    "buildDate":  "2026-01-23T00:00:00Z",
+    "version":  "v1.0.11",
+    "commit":  "2acfec1f",
+    "description":  "Fix Qwen model token limit issue - support model-specific max_tokens configuration",
     "branch":  "dev",
     "features":  [
-                     "Version API endpoint (/api/version)",
-                     "Version display page (/version)",
-                     "Real-time version information query",
-                     "Build info and Git commit tracking"
+                     "Model-specific token limits for Qwen models",
+                     "Auto-capping max_tokens based on model capabilities",
+                     "Support qwen-long with 8000 token limit",
+                     "Conservative default max_tokens (2000) to prevent API errors"
                  ]
 }
