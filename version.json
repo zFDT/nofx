@@ -1,14 +1,15 @@
 ﻿{
-    "buildDate":  "2026-01-23T00:00:00Z",
-    "version":  "v1.0.14",
-    "commit":  "d206a9c7",
-    "description":  "Enhanced token handling - 4x halving attempts + comprehensive data analysis enforcement",
+    "buildDate":  "2026-01-23T06:00:00Z",
+    "version":  "v1.0.15",
+    "commit":  "pending",
+    "description":  "Fixed prompt truncation - increased context limits to ensure complete market data analysis",
     "branch":  "dev",
     "features":  [
-                     "Increased halving attempts from 2x to 4x (8000->4000->2000->1000->500)",
-                     "Support ultra-low-limit models like qwen-plus-0723 (8K output)",
-                     "AI prompted to analyze ALL input data comprehensively even with output constraints",
-                     "Clear distinction: max_tokens limits OUTPUT length, not INPUT analysis depth",
-                     "Ensures AI decisions based on complete context regardless of response length"
+                     "Increased max total prompt length: 5,500 → 28,000 chars (5x increase)",
+                     "Increased max system prompt: 4,000 → 8,000 chars (2x increase)",
+                     "Increased max user prompt: 1,300 → 18,000 chars (14x increase)",
+                     "Ensures AI receives complete candidate coin data without truncation",
+                     "Supports comprehensive multi-timeframe analysis (5M/15M/1H/4H data)",
+                     "Modern AI models (DeepSeek/Qwen/Claude) can handle 32K+ context efficiently"
                  ]
 }

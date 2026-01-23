@@ -293,9 +293,11 @@ func GetFullDecisionWithStrategy(ctx *Context, mcpClient mcp.AIClient, engine *S
 	userPrompt := engine.BuildUserPrompt(ctx)
 
 	// 3.5. Check and truncate if total prompt length exceeds API limits
-	const maxTotalLength = 5500  // Conservative limit for Qwen (6000 char input limit, leaving buffer)
-	const maxSystemLength = 4000 // System prompt should not exceed this
-	const maxUserLength = 1300   // User prompt minimum after system prompt
+	// Updated 2026-01-23: Significantly increased limits to ensure complete data analysis
+	// Modern AI models (DeepSeek, Qwen, Claude, etc.) can handle 32K+ context
+	const maxTotalLength = 28000 // Increased from 5500 to support comprehensive market data analysis
+	const maxSystemLength = 8000 // Increased from 4000 - system prompts with strategy details
+	const maxUserLength = 18000  // Increased from 1300 - ensure all candidate coins and timeframe data included
 
 	totalLength := len(systemPrompt) + len(userPrompt)
 	logger.Infof("🔍 Prompt length check: system=%d, user=%d, total=%d (limit=%d)", len(systemPrompt), len(userPrompt), totalLength, maxTotalLength)
