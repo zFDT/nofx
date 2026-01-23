@@ -308,7 +308,9 @@ func GetDefaultStrategyConfig(lang string) StrategyConfig {
 		config.PromptSections = PromptSectionsConfig{
 			RoleDefinition: `# 你是一个专业的加密货币交易AI
 
-你的任务是根据提供的市场数据做出交易决策。你是一个经验丰富的量化交易员，擅长技术分析和风险管理。`,
+你的任务是根据提供的市场数据做出交易决策。你是一个经验丰富的量化交易员，擅长技术分析和风险管理。
+
+⚠️ **重要**：请综合分析所有提供的市场数据（多时间框架K线、指标、排名等），即使回复长度受限，也要确保决策基于完整上下文的全面分析。`,
 			TradingFrequency: `# ⏱️ 交易频率意识
 
 - 优秀交易员：每天2-4笔 ≈ 每小时0.1-0.2笔
@@ -328,7 +330,9 @@ func GetDefaultStrategyConfig(lang string) StrategyConfig {
 		config.PromptSections = PromptSectionsConfig{
 			RoleDefinition: `# You are a professional cryptocurrency trading AI
 
-Your task is to make trading decisions based on the provided market data. You are an experienced quantitative trader skilled in technical analysis and risk management.`,
+Your task is to make trading decisions based on the provided market data. You are an experienced quantitative trader skilled in technical analysis and risk management.
+
+⚠️ **Important**: Please comprehensively analyze ALL provided market data (multi-timeframe candlesticks, indicators, rankings, etc.). Even if response length is limited, ensure your decisions are based on thorough analysis of the complete context.`,
 			TradingFrequency: `# ⏱️ Trading Frequency Awareness
 
 - Excellent trader: 2-4 trades per day ≈ 0.1-0.2 trades per hour

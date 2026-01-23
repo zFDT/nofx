@@ -1,14 +1,14 @@
 ﻿{
     "buildDate":  "2026-01-23T00:00:00Z",
-    "version":  "v1.0.13",
-    "commit":  "b5fb37af",
-    "description":  "Smart token limit strategy - optimistic defaults with automatic downgrade",
+    "version":  "v1.0.14",
+    "commit":  "d206a9c7",
+    "description":  "Enhanced token handling - 4x halving attempts + comprehensive data analysis enforcement",
     "branch":  "dev",
     "features":  [
-                     "Optimistic default token limit (8000) for modern Qwen models",
-                     "Automatic halving on API range errors (up to 2 attempts)",
-                     "No need to hardcode limits for each model variant",
-                     "Supports qwen3-coder-plus (64K), qwen-plus-latest (32K) automatically",
-                     "Legacy model detection for qwen-max-0403 variants"
+                     "Increased halving attempts from 2x to 4x (8000->4000->2000->1000->500)",
+                     "Support ultra-low-limit models like qwen-plus-0723 (8K output)",
+                     "AI prompted to analyze ALL input data comprehensively even with output constraints",
+                     "Clear distinction: max_tokens limits OUTPUT length, not INPUT analysis depth",
+                     "Ensures AI decisions based on complete context regardless of response length"
                  ]
 }

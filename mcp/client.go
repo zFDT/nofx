@@ -194,7 +194,7 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 			// Track max_tokens fallback attempts (initial + two halvings => 3 tries total)
 			originalTokens := client.MaxTokens
 			localMaxTokens := originalTokens
-			halvingCount := 0 // number of halvings applied (max 2)
+			halvingCount := 0 // number of halvings applied (max 4 to support low-limit models like qwen-plus-0723)
 
 			for attempt := 1; attempt <= maxRetries; attempt++ {
 				if attempt > 1 {
@@ -217,9 +217,9 @@ func (client *Client) CallWithMessages(systemPrompt, userPrompt string) (string,
 
 				lastErr = err
 
-				// Special handling: max_tokens exceeds provider range -> try halving up to 2 times
+				// Special handling: max_tokens exceeds provider range -> try halving up to 4 times
 				if client.hooks.isMaxTokensRangeError(err) {
-					if halvingCount < 2 {
+					if halvingCount < 4 {
 						// halve tokens and retry
 						newTokens := localMaxTokens / 2
 						if newTokens < 1 {
@@ -615,7 +615,7 @@ func (client *Client) CallWithRequest(req *Request) (string, error) {
 		originalTokens = client.MaxTokens
 	}
 	localMaxTokens := originalTokens
-	halvingCount := 0 // number of halvings applied (max 2)
+	halvingCount := 0 // number of halvings applied (max 4 to support low-limit models)
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		if attempt > 1 {
@@ -636,9 +636,9 @@ func (client *Client) CallWithRequest(req *Request) (string, error) {
 		}
 
 		lastErr = err
-		// Special handling: max_tokens exceeds provider range -> try halving up to 2 times
+		// Special handling: max_tokens exceeds provider range -> try halving up to 4 times
 		if client.hooks.isMaxTokensRangeError(err) {
-			if halvingCount < 2 {
+			if halvingCount < 4 {
 				newTokens := localMaxTokens / 2
 				if newTokens < 1 {
 					newTokens = 1

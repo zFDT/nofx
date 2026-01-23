@@ -11,7 +11,7 @@ const (
 	// Token limit strategy: Use optimistic defaults with auto-downgrade on API errors
 	// System will automatically halve max_tokens (up to 2 times) when API returns range errors
 	// This eliminates the need to hardcode limits for every model variant
-	QwenLegacyMaxTokensLimit = 2000 // For known legacy models (qwen-max-0403)
+	QwenLegacyMaxTokensLimit  = 2000 // For known legacy models (qwen-max-0403)
 	QwenDefaultMaxTokensLimit = 8000 // Optimistic default for modern qwen models, will auto-adjust if needed
 )
 
