@@ -1,7 +1,7 @@
 ﻿{
     "buildDate":  "2026-01-23T06:00:00Z",
     "version":  "v1.0.15",
-    "commit":  "pending",
+    "commit":  "d416eaf9",
     "description":  "Fixed prompt truncation - increased context limits to ensure complete market data analysis",
     "branch":  "dev",
     "features":  [
