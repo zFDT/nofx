@@ -1,4 +1,4 @@
-import { Clock, Activity, TrendingUp, BarChart2, Info, Lock, ExternalLink, Zap, Check, AlertCircle, Key } from 'lucide-react'
+import { Clock, Activity, TrendingUp, BarChart2, Info, Lock, Zap, Check, AlertCircle, Key } from 'lucide-react'
 import type { IndicatorConfig } from '../../types'
 
 // Default NofxOS API Key
