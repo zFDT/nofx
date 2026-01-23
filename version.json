@@ -1,13 +1,14 @@
 ﻿{
     "buildDate":  "2026-01-23T00:00:00Z",
-    "version":  "v1.0.11",
-    "commit":  "2acfec1f",
-    "description":  "Fix Qwen model token limit issue - support model-specific max_tokens configuration",
+    "version":  "v1.0.12",
+    "commit":  "e5a1639f",
+    "description":  "Enhanced Qwen model support - intelligent token limit detection for all model generations",
     "branch":  "dev",
     "features":  [
-                     "Model-specific token limits for Qwen models",
-                     "Auto-capping max_tokens based on model capabilities",
-                     "Support qwen-long with 8000 token limit",
-                     "Conservative default max_tokens (2000) to prevent API errors"
+                     "Support qwen-plus-latest, qwen-turbo-latest with 32K token limit",
+                     "Intelligent model detection based on naming patterns",
+                     "qwen3 series support (qwen3-max, qwen3-plus) with 30K limit",
+                     "Backward compatible with legacy models (qwen-max-0403 at 2K)",
+                     "Auto-adjustment of max_tokens based on model capabilities"
                  ]
 }

@@ -311,13 +311,25 @@ func (client *Client) setAuthHeader(reqHeader http.Header) {
 func (client *Client) getProviderMaxTokensLimit() int {
 	switch client.Provider {
 	case ProviderQwen:
-		// qwen-long model supports higher token limits
-		if strings.Contains(strings.ToLower(client.Model), "qwen-long") {
+		modelLower := strings.ToLower(client.Model)
+		// New generation models with -latest suffix support 32K output tokens
+		if strings.Contains(modelLower, "-latest") {
+			return QwenLatestMaxTokensLimit
+		}
+		// qwen-long model supports 8K tokens
+		if strings.Contains(modelLower, "qwen-long") {
 			return QwenLongMaxTokensLimit
 		}
-		// All other qwen models (qwen-max-0403, qwen-plus, qwen-turbo, qwen3-max, etc.)
-		// have 2000 max_tokens limit
-		return QwenMaxTokensLimit
+		// New qwen3 series (qwen3-max, qwen3-plus, etc.) also support higher limits
+		if strings.Contains(modelLower, "qwen3") {
+			return QwenLatestMaxTokensLimit
+		}
+		// qwen-plus and qwen-max without version suffix - use latest limit
+		if modelLower == "qwen-plus" || modelLower == "qwen-max" || modelLower == "qwen-turbo" {
+			return QwenLatestMaxTokensLimit
+		}
+		// Legacy models (qwen-max-0403, etc.) have 2000 limit
+		return QwenLegacyMaxTokensLimit
 	default:
 		return 0
 	}
